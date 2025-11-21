@@ -137,18 +137,7 @@ body {
 }
 
 #scoreDisplay {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    font-size: 1.5em;
-    color: #2C5F8D;
-    font-weight: bold;
-    text-shadow: 2px 2px 4px rgba(255, 255, 255, 0.8);
-    z-index: 5;
-    background: rgba(255, 255, 255, 0.7);
-    padding: 10px 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: none; /* Ukryty - punkty są renderowane na canvasie */
 }
 
 /* Responsywność */
@@ -169,12 +158,6 @@ body {
         font-size: 1em;
     }
     
-    #scoreDisplay {
-        font-size: 1.2em;
-        top: 10px;
-        left: 10px;
-        padding: 8px 15px;
-    }
     
     #restartButton, #startButton {
         padding: 12px 30px;
@@ -200,9 +183,5 @@ body {
         font-size: 0.9em;
     }
     
-    #scoreDisplay {
-        font-size: 1em;
-        padding: 6px 12px;
-    }
 }
 

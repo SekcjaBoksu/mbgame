@@ -3,21 +3,22 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
-const restartButton = document.getElementById('restartButton');
-const startButton = document.getElementById('startButton');
-const scoreDisplay = document.getElementById('score');
-const finalScoreDisplay = document.getElementById('finalScore');
+// Elementy HTML są ukryte - wszystko renderowane na canvasie
+const scoreDisplay = document.getElementById('score'); // Może być null, ale nie używamy
 
-// Ustawienia canvas - węższy ekran
+// Ustawienia canvas - wąski ekran (jak telefon, pionowy)
 function resizeCanvas() {
     const maxWidth = window.innerWidth;
     const maxHeight = window.innerHeight;
-    const aspectRatio = 4 / 3; // Węższy ekran
+    // Aspect ratio jak telefon (9:16 lub podobny)
+    const aspectRatio = 9 / 16; // Wąski, pionowy ekran
     
     if (maxWidth / maxHeight > aspectRatio) {
+        // Ekran jest szerszy niż aspect ratio - dopasuj wysokość
         canvas.height = maxHeight;
         canvas.width = maxHeight * aspectRatio;
     } else {
+        // Ekran jest węższy - dopasuj szerokość
         canvas.width = maxWidth;
         canvas.height = maxWidth / aspectRatio;
     }
@@ -586,7 +587,6 @@ class Game {
         
         // Zwiększ wynik w zależności od postępu
         score = Math.floor(gameProgress / 10);
-        scoreDisplay.textContent = score;
     }
     
     draw() {
@@ -645,18 +645,74 @@ class Game {
         // Rysuj przeszkody
         this.obstacles.forEach(obstacle => obstacle.draw());
         
-        // Rysuj gracza (na pierwszym planie)
-        this.player.draw();
+        // Rysuj gracza (na pierwszym planie) - tylko podczas gry
+        if (gameState === 'playing') {
+            this.player.draw();
+            // Rysuj punkty na canvasie (tylko podczas gry)
+            this.drawScore();
+        }
         
         // Rysuj menu startowe na canvasie
         if (gameState === 'start') {
             this.drawStartMenu();
         }
         
-        // Rysuj ekran Game Over na canvasie
+        // Rysuj ekran Game Over na canvasie (na końcu, żeby był na wierzchu)
         if (gameState === 'gameOver') {
             this.drawGameOverScreen();
         }
+    }
+    
+    drawScore() {
+        // Tło dla punktów
+        const scoreX = canvas.width / 2;
+        const scoreY = 40;
+        const scoreWidth = 180;
+        const scoreHeight = 50;
+        
+        // Gradient tła
+        const bgGradient = ctx.createLinearGradient(
+            scoreX - scoreWidth / 2,
+            scoreY - scoreHeight / 2,
+            scoreX + scoreWidth / 2,
+            scoreY + scoreHeight / 2
+        );
+        bgGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        bgGradient.addColorStop(1, 'rgba(240, 248, 255, 0.95)');
+        
+        // Zaokrąglony prostokąt tła
+        ctx.fillStyle = bgGradient;
+        ctx.beginPath();
+        ctx.roundRect(scoreX - scoreWidth / 2, scoreY - scoreHeight / 2, scoreWidth, scoreHeight, 15);
+        ctx.fill();
+        
+        // Obramowanie
+        ctx.strokeStyle = 'rgba(74, 144, 226, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(scoreX - scoreWidth / 2, scoreY - scoreHeight / 2, scoreWidth, scoreHeight, 15);
+        ctx.stroke();
+        
+        // Wewnętrzne obramowanie
+        ctx.strokeStyle = 'rgba(74, 144, 226, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(scoreX - scoreWidth / 2 + 2, scoreY - scoreHeight / 2 + 2, scoreWidth - 4, scoreHeight - 4, 13);
+        ctx.stroke();
+        
+        // Cień
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+        
+        // Tekst punktów
+        ctx.fillStyle = '#2C5F8D';
+        ctx.font = 'bold 28px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'transparent';
+        ctx.fillText(`Punkty: ${score}`, scoreX, scoreY);
     }
     
     drawStartMenu() {
@@ -734,29 +790,36 @@ class Game {
         const menuX = canvas.width / 2;
         const menuY = canvas.height / 2;
         const menuWidth = Math.min(350, canvas.width * 0.8);
-        const menuHeight = 220;
+        const menuHeight = 240;
         
         ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
         ctx.beginPath();
         ctx.roundRect(menuX - menuWidth / 2, menuY - menuHeight / 2, menuWidth, menuHeight, 20);
         ctx.fill();
         
+        // Cień menu
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 10;
+        
         // Tytuł Game Over
         ctx.fillStyle = '#E2001A';
-        ctx.font = 'bold 40px Arial';
+        ctx.font = 'bold 42px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Game Over', menuX, menuY - 60);
+        ctx.shadowColor = 'transparent';
+        ctx.fillText('Game Over', menuX, menuY - 70);
         
         // Wynik
         ctx.fillStyle = '#555';
-        ctx.font = '20px Arial';
-        ctx.fillText(`Twój wynik: ${score}`, menuX, menuY - 10);
+        ctx.font = '22px Arial';
+        ctx.fillText(`Twój wynik: ${score}`, menuX, menuY - 20);
         
         // Przycisk Restart
         const buttonY = menuY + 50;
-        const buttonWidth = 180;
-        const buttonHeight = 45;
+        const buttonWidth = 200;
+        const buttonHeight = 50;
         
         const buttonGradient = ctx.createLinearGradient(
             menuX - buttonWidth / 2,
@@ -768,17 +831,27 @@ class Game {
         buttonGradient.addColorStop(1, '#2C5F8D');
         ctx.fillStyle = buttonGradient;
         ctx.beginPath();
-        ctx.roundRect(menuX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 22);
+        ctx.roundRect(menuX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 25);
         ctx.fill();
         
+        // Cień przycisku
+        ctx.shadowColor = 'rgba(74, 144, 226, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+        
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 20px Arial';
-        ctx.fillText('RESTART', menuX, buttonY + 6);
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'transparent';
+        ctx.fillText('RESTART', menuX, buttonY);
     }
     
     gameOver() {
         gameState = 'gameOver';
-        finalScoreDisplay.textContent = score;
+        isJetpackActive = false; // Wyłącz jetpack
+        // Wynik jest wyświetlany na canvasie w drawGameOverScreen()
     }
     
     reset() {
@@ -793,7 +866,7 @@ class Game {
         horizontalSpeed = 0;
         scrollOffset = 0;
         isJetpackActive = false; // Reset jetpacka
-        scoreDisplay.textContent = score;
+        // Punkty są renderowane na canvasie, nie w HTML
         
         // Utwórz początkowe turbiny - wszystkie podstawy na ziemi, różne długości wież
         this.turbines.push(new WindTurbine(300, 120));  // Krótka wieża
@@ -832,8 +905,8 @@ function handleClick(event) {
         const menuX = canvas.width / 2;
         const menuY = canvas.height / 2;
         const buttonY = menuY + 50;
-        const buttonWidth = 180;
-        const buttonHeight = 45;
+        const buttonWidth = 200;
+        const buttonHeight = 50;
         
         // Sprawdź kolizję z przyciskiem Restart
         if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
@@ -841,8 +914,10 @@ function handleClick(event) {
             game.reset();
             gameState = 'playing';
             isJetpackActive = false;
+            return true; // Zwróć true żeby potwierdzić kliknięcie
         }
     }
+    return false;
 }
 
 // Aktywacja jetpacka (przytrzymanie)
@@ -864,12 +939,13 @@ function deactivateJetpack(event) {
 // Obsługa zdarzeń myszy
 canvas.addEventListener('click', handleClick);
 
-// Mousedown - aktywuj jetpack
+// Mousedown - aktywuj jetpack lub obsłuż kliknięcie w menu
 canvas.addEventListener('mousedown', (e) => {
     if (gameState === 'playing') {
         e.preventDefault();
         activateJetpack(e);
-    } else {
+    } else if (gameState === 'start' || gameState === 'gameOver') {
+        e.preventDefault();
         handleClick(e);
     }
 });
