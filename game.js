@@ -423,13 +423,31 @@ class WindTurbine {
                 ctx.fill();
                 
                 // Cząsteczki wiatru (poruszają się od wiatraka w prawo - w plecy gracza)
+                // Użyj stałej gęstości cząsteczek na jednostkę długości, nie stałej liczby
+                // To zapobiega ściskaniu się cząsteczek przy krawędziach ekranu
                 ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-                for (let i = 0; i < 30; i++) {
-                    const progress = Math.random();
-                    const offsetX = startX + (endX - startX) * progress;
-                    // Rysuj tylko cząsteczki na ekranie
-                    if (offsetX >= 0 && offsetX <= canvas.width) {
-                        const offsetY = gondolaY + (Math.random() - 0.5) * 70;
+                
+                // Oblicz pozycję cząsteczek w całej długości smugi (windVisualLength), nie tylko w widocznej części
+                const fullWindStartX = windStartX; // Początek całej smugi (może być poza ekranem)
+                const fullWindEndX = windStartX + this.windVisualLength; // Koniec całej smugi
+                
+                // Gęstość: 1 cząsteczka na 12-15 pikseli długości smugi
+                const particleDensity = 1 / 13; // Cząsteczki na piksel
+                const totalParticles = Math.ceil(this.windVisualLength * particleDensity);
+                
+                for (let i = 0; i < totalParticles; i++) {
+                    // Pozycja w całej długości smugi (od windStartX do windVisualEndX)
+                    const progress = i / totalParticles + (Math.random() - 0.5) * 0.1; // Z lekkim losowym rozrzutem
+                    const particleWorldX = fullWindStartX + this.windVisualLength * progress;
+                    
+                    // Rysuj tylko cząsteczki, które są na ekranie
+                    if (particleWorldX >= 0 && particleWorldX <= canvas.width) {
+                        // Szerokość smugi w miejscu cząsteczki (interpolacja)
+                        const particleProgress = progress;
+                        const particleWidth = startWidth + (endWidth - startWidth) * particleProgress;
+                        
+                        const offsetX = particleWorldX;
+                        const offsetY = gondolaY + (Math.random() - 0.5) * particleWidth * 0.6; // Rozrzut zależny od szerokości smugi
                         const size = Math.random() * 2.5 + 1;
                         ctx.beginPath();
                         ctx.arc(offsetX, offsetY, size, 0, Math.PI * 2);
