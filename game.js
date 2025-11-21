@@ -53,6 +53,8 @@ let gameProgress = 0; // Postęp w grze (odległość przebyta)
 let scrollOffset = 0; // Offset scrollowania planszy
 const groundHeight = 80; // Wysokość podłoża
 let isJetpackActive = false; // Czy jetpack jest aktywny
+let windMomentum = 0; // Momentum wiatru - stopniowo spada po wyjściu ze smugi
+const momentumDecay = 0.97; // Współczynnik spadku momentum (0.97 = spada o 3% co frame)
 
 // Załaduj logo
 const logoImg = new Image();
@@ -605,8 +607,24 @@ class Game {
             windForce += force;
         });
         
-        // Jeśli nie ma wiatru z żadnego wiatraka, użyj minimalnej prędkości (delikatnie zwiększona)
-        horizontalSpeed = windForce > 0 ? windForce : 0.7;
+        // Mechanika momentum - boost pozostaje po wyjściu ze smugi i stopniowo spada
+        if (windForce > 0) {
+            // Gdy jesteśmy w smudze, ustaw momentum na aktualną siłę wiatru (lub maksimum)
+            windMomentum = Math.max(windMomentum, windForce);
+        } else {
+            // Gdy nie jesteśmy w smudze, momentum stopniowo spada
+            windMomentum *= momentumDecay;
+            // Jeśli momentum spadło poniżej minimalnej prędkości, zresetuj do zera
+            if (windMomentum < 0.7) {
+                windMomentum = 0;
+            }
+        }
+        
+        // Użyj maksimum z aktualnej siły wiatru i momentum
+        const effectiveWindForce = Math.max(windForce, windMomentum);
+        
+        // Jeśli nie ma wiatru ani momentum, użyj minimalnej prędkości
+        horizontalSpeed = effectiveWindForce > 0 ? effectiveWindForce : 0.7;
         gameProgress += horizontalSpeed;
         
         // Scrollowanie planszy (świat przesuwa się w lewo)
@@ -942,6 +960,7 @@ class Game {
         horizontalSpeed = 0;
         scrollOffset = 0;
         isJetpackActive = false; // Reset jetpacka
+        windMomentum = 0; // Reset momentum
         // Punkty są renderowane na canvasie, nie w HTML
         
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)

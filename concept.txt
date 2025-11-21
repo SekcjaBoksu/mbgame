@@ -14,9 +14,17 @@ GŁÓWNA MECHANIKA:
    - Wizualna "linia wiatru" (gradient) pokazuje przepływ powietrza
    - **WAŻNE: Gradient wiatru zaczyna się PRZY WIATRAKU i idzie W PRAWO (w plecy gracza)**
      - Wiatr wieje w plecy gracza, więc gradient pokazuje wiatr od wiatraka w prawo
-     - Gradient jest widoczny na CAŁEJ DŁUGOŚCI od wiatraka w prawo (do końca ekranu lub do końca windLineLength)
+     - Gradient jest widoczny na CAŁEJ DŁUGOŚCI od wiatraka w prawo (do końca ekranu lub do końca windVisualLength)
      - Gradient jest silniejszy przy wiatraku i zanika w prawo
      - Gradient zawiera białe cząsteczki poruszające się w prawo
+     - **ROZDZIELENIE WIZUALNE I MECHANICZNE:**
+       - `windVisualLength` = 0.6 × szerokość ekranu (wizualna długość smugi - krótsza, ładniejsza)
+       - `windLineLength` = 2.0 × szerokość ekranu (mechaniczna długość - dla boostu, dłuższa)
+       - Smuga wizualnie jest krótsza, ale boost działa na dłuższym zasięgu
+   - **WAŻNE: Renderowanie smugi**
+     - Smuga jest rysowana PRZED wiatrakiem w metodzie draw()
+     - Smuga jest widoczna nawet gdy wiatrak zniknie z ekranu (dopóki smuga przecina ekran)
+     - Wiatrak jest usuwany dopiero gdy smuga całkowicie zniknie (z marginesem 50% szerokości ekranu)
    - **WAŻNE: Wiatraki wyrastają z ziemi, różne wysokości wież**
      - Podstawy wiatraków ZAWSZE na ziemi
      - Zmienia się tylko wysokość wieży (różne wysokości gondoli)
@@ -30,7 +38,7 @@ GŁÓWNA MECHANIKA:
      - Im bliżej źródła wiatru (wiatraka), tym silniejszy efekt
    - **WAŻNE: Kierunek obrotu łopat**
      - Łopaty obracają się tak, aby wizualnie pokazywać wiatr wiejący w prawo (w plecy gracza)
-   - Bazowa prędkość (bez wiatru): 0.35
+   - Bazowa prędkość (bez wiatru): 0.7 (zwiększona)
    - Im więcej wiatru, tym szybciej postać porusza się w prawo
 
 3. PRZESZKODY:
@@ -99,5 +107,12 @@ NOWE WYMAGANIA (AKTUALIZACJA):
    - To kluczowy element gameplayu - gracz musi manewrować, aby być w prądzie powietrznym
 
 4. **Bazowa prędkość:**
-   - Gdy nie ma wiatru z żadnego wiatraka: 0.35 (ciut wyższa niż wcześniej)
+   - Gdy nie ma wiatru z żadnego wiatraka: 0.7 (zwiększona)
+
+5. **Renderowanie smugi wiatru:**
+   - ✅ SUKCES: Smuga jest rysowana PRZED wiatrakiem w metodzie draw()
+   - Smuga jest widoczna nawet gdy wiatrak zniknie z ekranu (dopóki smuga przecina ekran)
+   - Wiatrak jest usuwany dopiero gdy smuga całkowicie zniknie (z marginesem 50% szerokości ekranu)
+   - Rozdzielenie długości wizualnej (0.6 × szerokość) od mechanicznej (2.0 × szerokość)
+   - Wizualnie smuga jest krótsza i ładniejsza, ale boost działa na dłuższym zasięgu
 
