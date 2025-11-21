@@ -10,19 +10,9 @@
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- Ekran startowy -->
-        <div id="startScreen" class="screen">
-            <h1>Wind Runner</h1>
-            <p>Kliknij lub dotknij, aby rozpocząć</p>
-            <p class="instructions">Użyj kliknięcia/tapnięcia, aby wznieść się wyżej</p>
-        </div>
-        
-        <!-- Ekran Game Over -->
-        <div id="gameOverScreen" class="screen hidden">
-            <h2>Game Over</h2>
-            <p>Twój wynik: <span id="finalScore">0</span></p>
-            <button id="restartButton">Restart</button>
-        </div>
+        <!-- Ekrany renderowane na canvasie - ukryte -->
+        <div id="startScreen" class="screen hidden"></div>
+        <div id="gameOverScreen" class="screen hidden"></div>
         
         <!-- Licznik punktów -->
         <div id="scoreDisplay">

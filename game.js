@@ -4,6 +4,7 @@ const ctx = canvas.getContext('2d');
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const restartButton = document.getElementById('restartButton');
+const startButton = document.getElementById('startButton');
 const scoreDisplay = document.getElementById('score');
 const finalScoreDisplay = document.getElementById('finalScore');
 
@@ -24,6 +25,23 @@ function resizeCanvas() {
 
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+
+// Polyfill dla roundRect (dla starszych przeglądarek)
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+        this.beginPath();
+        this.moveTo(x + radius, y);
+        this.lineTo(x + width - radius, y);
+        this.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.lineTo(x + width, y + height - radius);
+        this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.lineTo(x + radius, y + height);
+        this.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.lineTo(x, y + radius);
+        this.quadraticCurveTo(x, y, x + radius, y);
+        this.closePath();
+    };
+}
 
 // Zmienne gry
 let gameState = 'start'; // 'start', 'playing', 'gameOver'
@@ -576,12 +594,138 @@ class Game {
         
         // Rysuj gracza (na pierwszym planie)
         this.player.draw();
+        
+        // Rysuj menu startowe na canvasie
+        if (gameState === 'start') {
+            this.drawStartMenu();
+        }
+        
+        // Rysuj ekran Game Over na canvasie
+        if (gameState === 'gameOver') {
+            this.drawGameOverScreen();
+        }
+    }
+    
+    drawStartMenu() {
+        // Półprzezroczyste tło
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Tło menu
+        const menuX = canvas.width / 2;
+        const menuY = canvas.height / 2;
+        const menuWidth = Math.min(400, canvas.width * 0.8);
+        const menuHeight = 280;
+        
+        // Zaokrąglony prostokąt (symulacja)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(menuX - menuWidth / 2, menuY - menuHeight / 2, menuWidth, menuHeight, 20);
+        ctx.fill();
+        
+        // Cień
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 10;
+        
+        // Tytuł
+        ctx.fillStyle = '#2C5F8D';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'transparent';
+        ctx.fillText('Wind Runner', menuX, menuY - 80);
+        
+        // Podtytuł
+        ctx.fillStyle = '#4A90E2';
+        ctx.font = 'italic 18px Arial';
+        ctx.fillText('Użyj siły wiatru, aby lecieć!', menuX, menuY - 30);
+        
+        // Przycisk Start (prostokąt z zaokrąglonymi rogami)
+        const buttonY = menuY + 20;
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        
+        // Tło przycisku
+        const buttonGradient = ctx.createLinearGradient(
+            menuX - buttonWidth / 2,
+            buttonY - buttonHeight / 2,
+            menuX + buttonWidth / 2,
+            buttonY + buttonHeight / 2
+        );
+        buttonGradient.addColorStop(0, '#4A90E2');
+        buttonGradient.addColorStop(1, '#2C5F8D');
+        ctx.fillStyle = buttonGradient;
+        ctx.beginPath();
+        ctx.roundRect(menuX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 25);
+        ctx.fill();
+        
+        // Tekst przycisku
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
+        ctx.fillText('START', menuX, buttonY + 8);
+        
+        // Instrukcje
+        ctx.fillStyle = '#888';
+        ctx.font = 'italic 14px Arial';
+        ctx.fillText('Kliknij ekran, aby wznieść się wyżej', menuX, menuY + 100);
+    }
+    
+    drawGameOverScreen() {
+        // Półprzezroczyste tło
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Tło menu
+        const menuX = canvas.width / 2;
+        const menuY = canvas.height / 2;
+        const menuWidth = Math.min(350, canvas.width * 0.8);
+        const menuHeight = 220;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(menuX - menuWidth / 2, menuY - menuHeight / 2, menuWidth, menuHeight, 20);
+        ctx.fill();
+        
+        // Tytuł Game Over
+        ctx.fillStyle = '#E2001A';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Game Over', menuX, menuY - 60);
+        
+        // Wynik
+        ctx.fillStyle = '#555';
+        ctx.font = '20px Arial';
+        ctx.fillText(`Twój wynik: ${score}`, menuX, menuY - 10);
+        
+        // Przycisk Restart
+        const buttonY = menuY + 50;
+        const buttonWidth = 180;
+        const buttonHeight = 45;
+        
+        const buttonGradient = ctx.createLinearGradient(
+            menuX - buttonWidth / 2,
+            buttonY - buttonHeight / 2,
+            menuX + buttonWidth / 2,
+            buttonY + buttonHeight / 2
+        );
+        buttonGradient.addColorStop(0, '#4A90E2');
+        buttonGradient.addColorStop(1, '#2C5F8D');
+        ctx.fillStyle = buttonGradient;
+        ctx.beginPath();
+        ctx.roundRect(menuX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 22);
+        ctx.fill();
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText('RESTART', menuX, buttonY + 6);
     }
     
     gameOver() {
         gameState = 'gameOver';
         finalScoreDisplay.textContent = score;
-        gameOverScreen.classList.remove('hidden');
     }
     
     reset() {
@@ -608,25 +752,64 @@ class Game {
 const game = new Game();
 
 // Obsługa zdarzeń
-function handleInput() {
+function handleInput(event) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+    
     if (gameState === 'start') {
-        gameState = 'playing';
-        startScreen.classList.add('hidden');
+        // Sprawdź czy kliknięto w przycisk Start
+        const menuX = canvas.width / 2;
+        const menuY = canvas.height / 2;
+        const buttonY = menuY + 20;
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        
+        // Sprawdź kolizję z przyciskiem Start
+        if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
+            y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
+            gameState = 'playing';
+        }
     } else if (gameState === 'playing') {
         game.player.jump();
+    } else if (gameState === 'gameOver') {
+        // Sprawdź czy kliknięto w przycisk Restart
+        const menuX = canvas.width / 2;
+        const menuY = canvas.height / 2;
+        const buttonY = menuY + 50;
+        const buttonWidth = 180;
+        const buttonHeight = 45;
+        
+        // Sprawdź kolizję z przyciskiem Restart
+        if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
+            y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
+            game.reset();
+            gameState = 'playing';
+        }
     }
 }
 
+// Kliknięcie na canvas
 canvas.addEventListener('click', handleInput);
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    handleInput();
-});
-
-restartButton.addEventListener('click', () => {
-    game.reset();
-    gameState = 'playing';
-    gameOverScreen.classList.add('hidden');
+    if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = (touch.clientX - rect.left) * scaleX;
+        const y = (touch.clientY - rect.top) * scaleY;
+        
+        // Symuluj kliknięcie
+        const fakeEvent = {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+        };
+        handleInput(fakeEvent);
+    }
 });
 
 // Pętla gry

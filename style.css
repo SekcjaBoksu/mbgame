@@ -54,9 +54,18 @@ body {
 
 .screen h1 {
     color: #2C5F8D;
-    font-size: 3em;
-    margin-bottom: 20px;
+    font-size: 3.5em;
+    margin-bottom: 10px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.screen .subtitle {
+    color: #4A90E2;
+    font-size: 1.1em;
+    margin-bottom: 30px;
+    font-style: italic;
 }
 
 .screen h2 {
@@ -72,9 +81,37 @@ body {
 }
 
 .screen .instructions {
-    font-size: 0.9em;
-    color: #777;
-    margin-top: 20px;
+    font-size: 0.85em;
+    color: #888;
+    margin-top: 25px;
+    font-style: italic;
+}
+
+#startButton {
+    margin: 30px 0 20px 0;
+    padding: 18px 60px;
+    font-size: 1.5em;
+    font-weight: bold;
+    background: linear-gradient(135deg, #4A90E2 0%, #2C5F8D 100%);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(74, 144, 226, 0.5);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+#startButton:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(74, 144, 226, 0.7);
+    background: linear-gradient(135deg, #5AA0F2 0%, #3C6F9D 100%);
+}
+
+#startButton:active {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 15px rgba(74, 144, 226, 0.6);
 }
 
 #restartButton {
@@ -139,7 +176,7 @@ body {
         padding: 8px 15px;
     }
     
-    #restartButton {
+    #restartButton, #startButton {
         padding: 12px 30px;
         font-size: 1em;
     }
