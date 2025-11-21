@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wind Runner - Gra Wiatrowa</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Ekran startowy -->
+        <div id="startScreen" class="screen">
+            <h1>Wind Runner</h1>
+            <p>Kliknij lub dotknij, aby rozpocząć</p>
+            <p class="instructions">Użyj kliknięcia/tapnięcia, aby wznieść się wyżej</p>
+        </div>
+        
+        <!-- Ekran Game Over -->
+        <div id="gameOverScreen" class="screen hidden">
+            <h2>Game Over</h2>
+            <p>Twój wynik: <span id="finalScore">0</span></p>
+            <button id="restartButton">Restart</button>
+        </div>
+        
+        <!-- Licznik punktów -->
+        <div id="scoreDisplay">
+            <span>Punkty: </span><span id="score">0</span>
+        </div>
+    </div>
+    
+    <script src="game.js"></script>
+</body>
+</html>
+
