@@ -56,6 +56,8 @@ const groundHeight = 80; // Wysokość podłoża
 let isJetpackActive = false; // Czy jetpack jest aktywny
 let windMomentum = 0; // Momentum wiatru - stopniowo spada po wyjściu ze smugi
 const momentumDecay = 0.985; // Współczynnik spadku momentum (0.985 = spada o 1.5% co frame - spowolnione)
+let introAnimationProgress = 0; // Postęp animacji intro (0-1)
+const introAnimationDuration = 120; // Długość animacji w klatkach (około 2 sekundy przy 60 FPS)
 
 // Załaduj logo (małe - na postaci)
 const logoImg = new Image();
@@ -891,6 +893,16 @@ class Game {
     }
     
     update() {
+        // Animacja intro - postać nadlatuje z lewej strony (tylko gdy animacja została rozpoczęta)
+        if (gameState === 'start' && introAnimationProgress > 0) {
+            introAnimationProgress += 1 / introAnimationDuration;
+            if (introAnimationProgress >= 1) {
+                introAnimationProgress = 1;
+                gameState = 'playing'; // Automatycznie przejdź do gry po zakończeniu animacji
+            }
+            return; // Nie aktualizuj reszty gry podczas animacji
+        }
+        
         if (gameState !== 'playing') return;
         
         this.frameCount++;
@@ -1289,27 +1301,44 @@ class Game {
         // Rysuj przeszkody
         this.obstacles.forEach(obstacle => obstacle.draw());
         
-        // Rysuj gracza (na pierwszym planie) - tylko podczas gry
-        if (gameState === 'playing') {
-            // Sprawdź czy gracz jest w podmuchu wiatru
+        // Rysuj gracza (na pierwszym planie) - podczas gry i animacji intro
+        if (gameState === 'playing' || (gameState === 'start' && introAnimationProgress > 0)) {
+            // Sprawdź czy gracz jest w podmuchu wiatru (tylko podczas gry)
             const playerY = this.player.y;
             let isInWindStream = false;
-            this.turbines.forEach(turbine => {
-                const force = turbine.getWindForce(playerY);
-                if (force > 0) {
-                    isInWindStream = true;
-                }
-            });
+            if (gameState === 'playing') {
+                this.turbines.forEach(turbine => {
+                    const force = turbine.getWindForce(playerY);
+                    if (force > 0) {
+                        isInWindStream = true;
+                    }
+                });
+            }
             
-            this.player.draw(isInWindStream, horizontalSpeed);
-            // Rysuj punkty na canvasie (tylko podczas gry)
-            this.drawScore();
-            // Rysuj pasek prędkości
-            this.drawSpeedBar();
+            // Podczas animacji intro, użyj animowanej pozycji X
+            if (gameState === 'start' && introAnimationProgress > 0) {
+                // Easing function dla płynnej animacji (ease-out)
+                const easeOut = 1 - Math.pow(1 - introAnimationProgress, 3);
+                const startX = -this.player.width * 2; // Poza ekranem po lewej
+                const endX = canvas.width * 0.15; // Docelowa pozycja
+                const animatedX = startX + (endX - startX) * easeOut;
+                
+                // Zapisz oryginalną pozycję X i użyj animowanej
+                const originalX = this.player.x;
+                this.player.x = animatedX;
+                this.player.draw(false, 0); // Bez wiatru podczas animacji
+                this.player.x = originalX; // Przywróć oryginalną pozycję
+            } else if (gameState === 'playing') {
+                this.player.draw(isInWindStream, horizontalSpeed);
+                // Rysuj punkty na canvasie (tylko podczas gry)
+                this.drawScore();
+                // Rysuj pasek prędkości
+                this.drawSpeedBar();
+            }
         }
         
-        // Rysuj menu startowe na canvasie
-        if (gameState === 'start') {
+        // Rysuj menu startowe na canvasie (tylko gdy animacja nie została jeszcze rozpoczęta)
+        if (gameState === 'start' && introAnimationProgress === 0) {
             this.drawStartMenu();
         }
         
@@ -1594,6 +1623,7 @@ class Game {
         scrollOffset = 0;
         isJetpackActive = false; // Reset jetpacka
         windMomentum = 0; // Reset momentum
+        introAnimationProgress = 0; // Reset animacji intro
         // Punkty są renderowane na canvasie, nie w HTML
         
         // Reset gwiazdek
@@ -1662,18 +1692,20 @@ function handleClick(event) {
     const y = (event.clientY - rect.top) * scaleY;
     
     if (gameState === 'start') {
-        // Sprawdź czy kliknięto w przycisk Start
-        const menuX = canvas.width / 2;
-        const menuY = canvas.height / 2;
-        const buttonY = menuY + 20;
-        const buttonWidth = 200;
-        const buttonHeight = 50;
-        
-        // Sprawdź kolizję z przyciskiem Start
-        if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
-            y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
-            gameState = 'playing';
-            isJetpackActive = false; // Reset jetpacka przy starcie
+        // Podczas animacji intro nie można kliknąć Start
+        if (introAnimationProgress < 0.1) {
+            // Sprawdź czy kliknięto w przycisk Start
+            const menuX = canvas.width / 2;
+            const menuY = canvas.height / 2;
+            const buttonY = menuY + 20;
+            const buttonWidth = 200;
+            const buttonHeight = 50;
+            
+            // Sprawdź kolizję z przyciskiem Start
+            if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
+                y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
+                introAnimationProgress = 0.001; // Rozpocznij animację (mała wartość, żeby animacja się rozpoczęła)
+            }
         }
     } else if (gameState === 'gameOver') {
         // Sprawdź czy kliknięto w przycisk Restart
@@ -1687,7 +1719,8 @@ function handleClick(event) {
         if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
             y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
             game.reset();
-            gameState = 'playing';
+            gameState = 'start'; // Wróć do stanu start z animacją
+            introAnimationProgress = 0.001; // Rozpocznij animację intro
             isJetpackActive = false;
             return true; // Zwróć true żeby potwierdzić kliknięcie
         }
