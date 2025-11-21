@@ -123,36 +123,74 @@ class Player {
         isJetpackActive = false;
     }
     
-    draw() {
+    draw(isInWindStream = false) {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
         
-        // Ciało gracza (prosty kształt)
+        const smileIntensity = isInWindStream ? 1.0 : 0.3; // Mocny uśmiech w wietrze, lekki poza nim
+        
+        // NOGI (na dole)
+        ctx.fillStyle = '#2C5F8D';
+        // Lewa noga
+        ctx.fillRect(-this.width / 6, this.height / 3, this.width / 6, this.height / 3);
+        // Prawa noga
+        ctx.fillRect(this.width / 12, this.height / 3, this.width / 6, this.height / 3);
+        
+        // KORPUS (tułów)
         ctx.fillStyle = '#4A90E2';
         ctx.beginPath();
-        ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, this.width / 2.5, this.height / 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
         
-        // Głowa
-        ctx.fillStyle = '#FFDBAC';
-        ctx.beginPath();
-        ctx.arc(0, -this.height / 3, this.width / 4, 0, Math.PI * 2);
-        ctx.fill();
+        // RAMIONA
+        ctx.fillStyle = '#4A90E2';
+        // Lewe ramię
+        ctx.fillRect(-this.width / 2.2, -this.height / 6, this.width / 4, this.height / 4);
+        // Prawe ramię
+        ctx.fillRect(this.width / 2.2 - this.width / 4, -this.height / 6, this.width / 4, this.height / 4);
         
         // Logo na koszulce
         if (logoImage) {
             ctx.save();
-            const logoSize = this.width * 0.4;
+            const logoSize = this.width * 0.35;
             ctx.drawImage(
                 logoImage,
                 -logoSize / 2,
-                -logoSize / 4,
+                -logoSize / 3,
                 logoSize,
                 logoSize
             );
             ctx.restore();
         }
+        
+        // GŁOWA
+        ctx.fillStyle = '#FFDBAC';
+        ctx.beginPath();
+        ctx.arc(0, -this.height / 2.5, this.width / 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // TWARZ - oczy
+        ctx.fillStyle = '#000';
+        // Lewe oko
+        ctx.beginPath();
+        ctx.arc(-this.width / 12, -this.height / 2.5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        // Prawe oko
+        ctx.beginPath();
+        ctx.arc(this.width / 12, -this.height / 2.5, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // TWARZ - uśmiech (zależny od wiatru)
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const smileY = -this.height / 2.5 + this.width / 12;
+        const smileWidth = this.width / 6 * (0.5 + smileIntensity * 0.5); // Szerszy uśmiech w wietrze
+        const smileHeight = this.width / 15 * smileIntensity; // Wyższy uśmiech w wietrze
+        // Rysuj uśmiech jako łuk
+        ctx.arc(0, smileY - smileHeight, smileWidth, 0.2, Math.PI - 0.2);
+        ctx.stroke();
         
         // Jetpack - płomienie gdy aktywny
         if (isJetpackActive) {
@@ -186,16 +224,6 @@ class Player {
             
             ctx.restore();
         }
-        
-        // Skrzydła/ramiona (efekt wiatru)
-        ctx.strokeStyle = '#87CEEB';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(-this.width / 3, 0);
-        ctx.lineTo(-this.width / 2, -this.height / 4);
-        ctx.moveTo(this.width / 3, 0);
-        ctx.lineTo(this.width / 2, -this.height / 4);
-        ctx.stroke();
         
         ctx.restore();
     }
@@ -270,37 +298,47 @@ class WindTurbine {
             
             // Rysuj tylko jeśli gradient ma sens (endX > startX) i jest widoczny
             if (endX > startX) {
-                // Gradient od wiatraka (silniejszy) w prawo (słabszy, zanika)
-                // Wizualnie pokazuje wiatr wiejący w plecy gracza (w prawo)
-                // Oblicz pozycję względną wiatraka w widocznej części smugi
+                // Stożkowy kształt smugi - wąski przy wiatraku, poszerza się w prawo
                 const visibleWindStart = Math.max(0, windStartX);
                 const visibleWindEnd = Math.min(windVisualEndX, canvas.width);
                 const visibleWindLength = visibleWindEnd - visibleWindStart;
                 const windProgressAtStart = (visibleWindStart - windStartX) / this.windVisualLength;
                 
+                // Szerokość smugi przy wiatraku (wąska)
+                const startWidth = 30;
+                // Szerokość smugi na końcu (szersza, rozprzestrzenia się)
+                const endWidth = 120;
+                
+                // Oblicz aktualną szerokość na początku i końcu widocznej części
+                const currentStartWidth = startWidth + (endWidth - startWidth) * windProgressAtStart * 0.3;
+                const progressToEnd = (visibleWindEnd - visibleWindStart) / this.windVisualLength;
+                const currentEndWidth = startWidth + (endWidth - startWidth) * (windProgressAtStart * 0.3 + progressToEnd * 0.7);
+                
+                // Gradient od wiatraka (silniejszy) w prawo (słabszy, zanika)
                 const gradient = ctx.createLinearGradient(
                     startX,
                     gondolaY,
                     endX,
                     gondolaY
                 );
-                // Gradient musi uwzględniać, że wiatrak może być poza ekranem
                 const startOpacity = Math.max(0, 1.0 - windProgressAtStart);
-                gradient.addColorStop(0, `rgba(135, 206, 235, ${startOpacity})`); // Silny przy wiatraku (lub na początku widocznej części)
-                gradient.addColorStop(0.15, `rgba(135, 206, 235, ${startOpacity * 0.8})`);
-                gradient.addColorStop(0.3, `rgba(135, 206, 235, ${startOpacity * 0.6})`);
-                gradient.addColorStop(0.5, `rgba(135, 206, 235, ${startOpacity * 0.4})`);
-                gradient.addColorStop(0.7, `rgba(135, 206, 235, ${startOpacity * 0.25})`);
-                gradient.addColorStop(0.85, `rgba(135, 206, 235, ${startOpacity * 0.1})`);
+                gradient.addColorStop(0, `rgba(135, 206, 235, ${startOpacity * 0.6})`); // Silniejszy przy wiatraku
+                gradient.addColorStop(0.3, `rgba(135, 206, 235, ${startOpacity * 0.4})`);
+                gradient.addColorStop(0.6, `rgba(135, 206, 235, ${startOpacity * 0.2})`);
                 gradient.addColorStop(1, 'rgba(135, 206, 235, 0)'); // Zanika w prawo
                 
                 ctx.fillStyle = gradient;
-                ctx.fillRect(
-                    Math.max(0, startX), // Nie rysuj poza ekranem
-                    gondolaY - 60,
-                    endX - Math.max(0, startX),
-                    120
-                );
+                
+                // Rysuj stożkowy kształt (trapez) zamiast prostokąta
+                ctx.beginPath();
+                // Górna linia (szersza przy wiatraku, węższa na końcu)
+                ctx.moveTo(startX, gondolaY - currentStartWidth / 2);
+                ctx.lineTo(endX, gondolaY - currentEndWidth / 2);
+                // Dolna linia
+                ctx.lineTo(endX, gondolaY + currentEndWidth / 2);
+                ctx.lineTo(startX, gondolaY + currentStartWidth / 2);
+                ctx.closePath();
+                ctx.fill();
                 
                 // Cząsteczki wiatru (poruszają się od wiatraka w prawo - w plecy gracza)
                 ctx.fillStyle = 'rgba(255, 255, 255, 1)';
@@ -723,13 +761,15 @@ class Game {
         ctx.fillStyle = '#7CB342';
         ctx.fillRect(0, groundY, canvas.width, 8);
         
-        // Tekstura ziemi (kamyki/ziarno)
+        // Tekstura ziemi (kamyki/ziarno) - scrolluje się w lewo (przeciwnie do scrollOffset)
         ctx.fillStyle = 'rgba(90, 74, 58, 0.3)';
         for (let i = 0; i < 20; i++) {
-            const x = (scrollOffset * 0.5 + i * 50) % canvas.width;
+            const x = ((-scrollOffset * 0.5) + i * 50) % canvas.width;
             const y = groundY + 10 + Math.sin(i) * 5;
+            // Upewnij się, że x jest dodatnie
+            const finalX = x < 0 ? x + canvas.width : x;
             ctx.beginPath();
-            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.arc(finalX, y, 2, 0, Math.PI * 2);
             ctx.fill();
         }
         
@@ -741,7 +781,17 @@ class Game {
         
         // Rysuj gracza (na pierwszym planie) - tylko podczas gry
         if (gameState === 'playing') {
-            this.player.draw();
+            // Sprawdź czy gracz jest w podmuchu wiatru
+            const playerY = this.player.y;
+            let isInWindStream = false;
+            this.turbines.forEach(turbine => {
+                const force = turbine.getWindForce(playerY);
+                if (force > 0) {
+                    isInWindStream = true;
+                }
+            });
+            
+            this.player.draw(isInWindStream);
             // Rysuj punkty na canvasie (tylko podczas gry)
             this.drawScore();
         }
