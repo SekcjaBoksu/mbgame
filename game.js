@@ -324,8 +324,9 @@ class WindTurbine {
     constructor(worldX, towerHeight) {
         this.worldX = worldX; // Pozycja w świecie (scrolluje się)
         this.towerHeight = towerHeight; // Wysokość wieży (różna dla każdej turbiny)
-        this.towerWidth = 15;
-        this.bladeLength = 60;
+        this.towerWidth = 15; // Szerokość u góry (gondola)
+        this.towerBaseWidth = 20; // Szerokość u podstawy (szersza)
+        this.bladeLength = 80; // Dłuższe łopaty
         this.bladeAngle = 0;
         this.bladeSpeed = -0.03; // Obroty w lewo (przeciwnie do wskazówek) - wiatr wieje w prawo (w plecy gracza)
         this.windLineLength = canvas.width * 2.0; // Długa linia wiatru od wiatraka w prawo (dla mechaniki boostu)
@@ -449,17 +450,34 @@ class WindTurbine {
             return;
         }
         
-        // Wieża (ciemniejsza, w tle) - od gondoli do podstawy (ziemi)
-        ctx.fillStyle = '#555';
+        // Wieża (biała) - trapezowa, szersza u podstawy, zwęża się do góry
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        // Rysuj trapez - szerszy u podstawy, węższy u góry
+        ctx.moveTo(screenX - this.towerBaseWidth / 2, baseY); // Lewy dolny róg
+        ctx.lineTo(screenX - this.towerWidth / 2, gondolaY); // Lewy górny róg
+        ctx.lineTo(screenX + this.towerWidth / 2, gondolaY); // Prawy górny róg
+        ctx.lineTo(screenX + this.towerBaseWidth / 2, baseY); // Prawy dolny róg
+        ctx.closePath();
+        ctx.fill();
+        
+        // Czerwony pas na wieży (około 1/4 wysokości od podstawy)
+        const redBandHeight = this.towerHeight * 0.15; // Wysokość pasa
+        const redBandY = baseY - (this.towerHeight * 0.25); // Pozycja pasa (1/4 od podstawy)
+        // Oblicz szerokość wieży na wysokości pasa (interpolacja liniowa)
+        const bandProgress = (baseY - redBandY) / this.towerHeight; // 0 = podstawa, 1 = góra
+        const bandWidth = this.towerBaseWidth - (this.towerBaseWidth - this.towerWidth) * bandProgress;
+        
+        ctx.fillStyle = '#DC143C'; // Czerwony kolor
         ctx.fillRect(
-            screenX - this.towerWidth / 2,
-            gondolaY,
-            this.towerWidth,
-            this.towerHeight
+            screenX - bandWidth / 2 - 2, // Szerzej niż wieża
+            redBandY - redBandHeight / 2,
+            bandWidth + 4,
+            redBandHeight
         );
         
-        // Gondola (głowica)
-        ctx.fillStyle = '#666';
+        // Gondola (głowica) - jasnoszara/srebrna
+        ctx.fillStyle = '#C0C0C0'; // Srebrny/jasnoszary
         ctx.beginPath();
         ctx.ellipse(
             screenX,
@@ -472,19 +490,67 @@ class WindTurbine {
         );
         ctx.fill();
         
-        // Łopaty (odwrócone - wiatr wieje od lewej)
-        ctx.strokeStyle = '#888';
-        ctx.lineWidth = 4;
+        // Obramowanie gondoli dla głębi
+        ctx.strokeStyle = '#A0A0A0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(
+            screenX,
+            gondolaY,
+            this.towerWidth * 1.5,
+            this.towerWidth,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.stroke();
+        
+        // Łopaty (białe z czerwonymi końcówkami i pasem) - realistyczny kształt
         ctx.save();
         ctx.translate(screenX, gondolaY);
         
         for (let i = 0; i < 3; i++) {
             ctx.save();
             ctx.rotate(this.bladeAngle + (i * Math.PI * 2 / 3));
+            
+            // Kształt łopaty - szersza przy gondoli, zwęża się do końca
+            const bladeStartWidth = 8; // Szerokość przy gondoli
+            const bladeEndWidth = 2; // Szerokość na końcu
+            const redTipStart = this.bladeLength * 0.8; // Czerwona końcówka zaczyna się od 80%
+            const redBandStart = this.bladeLength * 0.75; // Czerwony pas zaczyna się od 75%
+            const redBandEnd = this.bladeLength * 0.85; // Czerwony pas kończy się na 85%
+            
+            // Główna część łopaty (biała) - od gondoli do czerwonego pasa
+            ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, -this.bladeLength);
-            ctx.stroke();
+            ctx.moveTo(-bladeStartWidth / 2, 0); // Lewy punkt przy gondoli
+            ctx.lineTo(-bladeEndWidth / 2, -redTipStart); // Lewy punkt przed końcówką
+            ctx.lineTo(-bladeEndWidth / 2, -redBandStart); // Lewy punkt przed pasem
+            ctx.lineTo(bladeEndWidth / 2, -redBandStart); // Prawy punkt przed pasem
+            ctx.lineTo(bladeEndWidth / 2, -redTipStart); // Prawy punkt przed końcówką
+            ctx.lineTo(bladeStartWidth / 2, 0); // Prawy punkt przy gondoli
+            ctx.closePath();
+            ctx.fill();
+            
+            // Czerwony pas na łopacie (przed końcówką)
+            ctx.fillStyle = '#DC143C';
+            ctx.beginPath();
+            ctx.moveTo(-bladeEndWidth / 2 - 1, -redBandStart);
+            ctx.lineTo(-bladeEndWidth / 2 - 1, -redBandEnd);
+            ctx.lineTo(bladeEndWidth / 2 + 1, -redBandEnd);
+            ctx.lineTo(bladeEndWidth / 2 + 1, -redBandStart);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Czerwona końcówka łopaty
+            ctx.fillStyle = '#DC143C';
+            ctx.beginPath();
+            ctx.moveTo(-bladeEndWidth / 2, -redTipStart);
+            ctx.lineTo(0, -this.bladeLength); // Ostrze końcówki
+            ctx.lineTo(bladeEndWidth / 2, -redTipStart);
+            ctx.closePath();
+            ctx.fill();
+            
             ctx.restore();
         }
         
