@@ -128,12 +128,18 @@ class Player {
         isJetpackActive = false;
     }
     
-    draw(isInWindStream = false) {
+    draw(isInWindStream = false, currentSpeed = 0.7) {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
         
-        const smileIntensity = isInWindStream ? 1.0 : 0.3; // Mocny uśmiech w wietrze, lekki poza nim
+        // Uśmiech zależny od prędkości - stopniowo się zwiększa z limitem
+        // Prędkość od 0.7 (minimalna) do 4.0 (maksymalna)
+        const minSpeed = 0.7;
+        const maxSpeed = 4.0;
+        const speedPercent = Math.min(1, Math.max(0, (currentSpeed - minSpeed) / (maxSpeed - minSpeed)));
+        // Uśmiech od 0.3 (wolno) do 1.0 (szybko) - z limitem
+        const smileIntensity = 0.3 + (speedPercent * 0.7); // 0.3 do 1.0
         
         // Oblicz siłę wiatru dla animacji włosów
         const windStrength = isInWindStream ? 1.5 : 0.3;
@@ -256,7 +262,7 @@ class Player {
         ctx.arc(this.width / 12, -this.height / 2.5, 2, 0, Math.PI * 2);
         ctx.fill();
         
-        // TWARZ - uśmiech (zależny od wiatru)
+        // TWARZ - uśmiech (zależny od prędkości)
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -870,7 +876,7 @@ class Game {
                 }
             });
             
-            this.player.draw(isInWindStream);
+            this.player.draw(isInWindStream, horizontalSpeed);
             // Rysuj punkty na canvasie (tylko podczas gry)
             this.drawScore();
             // Rysuj pasek prędkości
@@ -1003,12 +1009,12 @@ class Game {
         ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 10);
         ctx.stroke();
         
-        // Tekst prędkości (opcjonalnie)
+        // Tekst prędkości
         ctx.fillStyle = '#2C5F8D';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`Prędkość: ${horizontalSpeed.toFixed(1)}`, barX, barY);
+        ctx.fillText('Prędkość', barX, barY);
     }
     
     drawStartMenu() {
