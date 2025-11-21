@@ -54,7 +54,7 @@ let scrollOffset = 0; // Offset scrollowania planszy
 const groundHeight = 80; // Wysokość podłoża
 let isJetpackActive = false; // Czy jetpack jest aktywny
 let windMomentum = 0; // Momentum wiatru - stopniowo spada po wyjściu ze smugi
-const momentumDecay = 0.97; // Współczynnik spadku momentum (0.97 = spada o 3% co frame)
+const momentumDecay = 0.985; // Współczynnik spadku momentum (0.985 = spada o 1.5% co frame - spowolnione)
 
 // Załaduj logo
 const logoImg = new Image();
@@ -521,8 +521,8 @@ class WindTurbine {
             // Im dalej od wiatraka (większa odległość), tym słabszy wiatr (wiatr zanika)
             const distanceFactor = 1 - (distanceFromTurbineToPlayer / maxWindDistance);
             const verticalFactor = 1 - (verticalDistance / 60);
-            // Maksymalne przyspieszenie: 2.0x (gdy bardzo blisko wiatraka)
-            return 0.8 + (distanceFactor * verticalFactor * 1.2); // 0.8-2.0
+            // Maksymalne przyspieszenie: 3.5x (gdy bardzo blisko wiatraka) - ZWIĘKSZONE
+            return 1.5 + (distanceFactor * verticalFactor * 2.0); // 1.5-3.5 (szybszy boost)
         }
         
         // Poza prądem powietrznym - brak wiatru z tego wiatraka
@@ -873,6 +873,8 @@ class Game {
             this.player.draw(isInWindStream);
             // Rysuj punkty na canvasie (tylko podczas gry)
             this.drawScore();
+            // Rysuj pasek prędkości
+            this.drawSpeedBar();
         }
         
         // Rysuj menu startowe na canvasie
@@ -936,6 +938,77 @@ class Game {
         ctx.textBaseline = 'middle';
         ctx.shadowColor = 'transparent';
         ctx.fillText(`Punkty: ${score}`, scoreX, scoreY);
+    }
+    
+    drawSpeedBar() {
+        // Pasek prędkości - na dole ekranu, pod punktami
+        const barX = canvas.width / 2;
+        const barY = 80; // Pod punktami
+        const barWidth = 200;
+        const barHeight = 20;
+        const maxSpeed = 4.0; // Maksymalna prędkość (boost może osiągnąć ~3.5)
+        
+        // Oblicz procent wypełnienia (od 0.7 do maxSpeed)
+        const minSpeed = 0.7;
+        const speedPercent = Math.min(1, Math.max(0, (horizontalSpeed - minSpeed) / (maxSpeed - minSpeed)));
+        
+        // Tło paska
+        const bgGradient = ctx.createLinearGradient(
+            barX - barWidth / 2,
+            barY - barHeight / 2,
+            barX + barWidth / 2,
+            barY + barHeight / 2
+        );
+        bgGradient.addColorStop(0, 'rgba(200, 200, 200, 0.3)');
+        bgGradient.addColorStop(1, 'rgba(150, 150, 150, 0.3)');
+        
+        ctx.fillStyle = bgGradient;
+        ctx.beginPath();
+        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 10);
+        ctx.fill();
+        
+        // Wypełnienie paska (zależne od prędkości)
+        const fillGradient = ctx.createLinearGradient(
+            barX - barWidth / 2,
+            barY - barHeight / 2,
+            barX + barWidth / 2,
+            barY + barHeight / 2
+        );
+        // Kolor zmienia się od zielonego (wolno) przez żółty (średnio) do czerwonego (szybko)
+        if (speedPercent < 0.5) {
+            // Zielony do żółtego
+            fillGradient.addColorStop(0, '#4CAF50');
+            fillGradient.addColorStop(1, '#FFC107');
+        } else {
+            // Żółty do czerwonego
+            fillGradient.addColorStop(0, '#FFC107');
+            fillGradient.addColorStop(1, '#F44336');
+        }
+        
+        ctx.fillStyle = fillGradient;
+        ctx.beginPath();
+        ctx.roundRect(
+            barX - barWidth / 2,
+            barY - barHeight / 2,
+            barWidth * speedPercent,
+            barHeight,
+            10
+        );
+        ctx.fill();
+        
+        // Obramowanie
+        ctx.strokeStyle = 'rgba(74, 144, 226, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 10);
+        ctx.stroke();
+        
+        // Tekst prędkości (opcjonalnie)
+        ctx.fillStyle = '#2C5F8D';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`Prędkość: ${horizontalSpeed.toFixed(1)}`, barX, barY);
     }
     
     drawStartMenu() {
