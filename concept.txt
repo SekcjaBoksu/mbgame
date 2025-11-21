@@ -1,0 +1,57 @@
+KONCEPCJA GRY - WIND RUNNER (WERSJA UPROSZCZONA)
+==================================================
+
+GŁÓWNA MECHANIKA:
+-----------------
+1. POSTAĆ BOHATERA:
+   - Porusza się W GÓRĘ (kontrola gracza - kliknięcie/tapnięcie)
+   - Naturalnie OPADA W DÓŁ (grawitacja)
+   - Pozycja pozioma (X) jest STAŁA - postać jest w jednym miejscu na osi X
+   - Prędkość pozioma (przesuwanie w prawo) jest kontrolowana przez SIŁĘ WIATRU z wiatraków
+
+2. SIŁA WIATRU:
+   - Wiatraki generują siłę wiatru, która przesuwa postać w prawo
+   - Im więcej wiatru, tym szybciej postać porusza się w prawo
+   - Wizualna "linia wiatru" pokazuje przepływ powietrza
+
+3. PRZESZKODY:
+   - Przeszkody (ptaki) LECĄ W STRONĘ BOHATERA (z prawej strony w lewo)
+   - Nie przesuwają się razem ze światem - są niezależne
+   - Gracz musi unikać kolizji z przeszkodami
+   - Na razie używamy uproszczonych kształtów (np. prostokąty, koła)
+
+4. EKRAN:
+   - ZAWĘŻONA szerokość ekranu (np. 4:3 lub 3:2 zamiast 16:9)
+   - Mniej elementów na ekranie jednocześnie
+   - Czystszy, bardziej minimalistyczny wygląd
+
+5. ELEMENTY GRY:
+   - Wiatraki w tle (generują wiatr)
+   - Postać bohatera (po lewej stronie, stała pozycja X)
+   - Przeszkody lecące w stronę gracza (z prawej w lewo)
+   - Monety (opcjonalnie, jeśli nie zaśmiecają ekranu)
+   - Licznik punktów
+   - Ekran startowy i Game Over
+
+6. FIZYKA:
+   - Grawitacja: postać opada w dół
+   - Boost: kliknięcie/tapnięcie dodaje prędkość w górę
+   - Wiatr: zwiększa prędkość poziomą (przesuwanie w prawo)
+   - Kolizje: kontakt z przeszkodą = Game Over
+
+7. WIZUALIZACJA:
+   - Mniej elementów na ekranie
+   - Więcej przestrzeni
+   - Czytelniejszy interfejs
+   - Wiatraki w tle (nie na pierwszym planie)
+   - Linia wiatru jako wizualny efekt
+
+ZMIANY W STOSUNKU DO POPRZEDNIEJ WERSJI:
+----------------------------------------
+- Świat NIE przesuwa się w lewo
+- Postać porusza się w prawo (kontrolowane przez wiatr)
+- Przeszkody lecą w stronę gracza (z prawej w lewo)
+- Węższy ekran
+- Mniej elementów jednocześnie
+- Prostsze przeszkody (na razie)
+

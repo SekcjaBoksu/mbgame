@@ -7,11 +7,11 @@ const restartButton = document.getElementById('restartButton');
 const scoreDisplay = document.getElementById('score');
 const finalScoreDisplay = document.getElementById('finalScore');
 
-// Ustawienia canvas
+// Ustawienia canvas - węższy ekran
 function resizeCanvas() {
     const maxWidth = window.innerWidth;
     const maxHeight = window.innerHeight;
-    const aspectRatio = 16 / 9;
+    const aspectRatio = 4 / 3; // Węższy ekran
     
     if (maxWidth / maxHeight > aspectRatio) {
         canvas.height = maxHeight;
@@ -28,8 +28,11 @@ window.addEventListener('resize', resizeCanvas);
 // Zmienne gry
 let gameState = 'start'; // 'start', 'playing', 'gameOver'
 let score = 0;
-let gameSpeed = 2;
+let horizontalSpeed = 0; // Prędkość pozioma kontrolowana przez wiatr
 let logoImage = null;
+let gameProgress = 0; // Postęp w grze (odległość przebyta)
+let scrollOffset = 0; // Offset scrollowania planszy
+const groundHeight = 80; // Wysokość podłoża
 
 // Załaduj logo
 const logoImg = new Image();
@@ -43,37 +46,36 @@ class Player {
     constructor() {
         this.width = 60;
         this.height = 60;
-        this.x = canvas.width * 0.2;
+        this.x = canvas.width * 0.15; // Stała pozycja X (po lewej stronie)
         this.y = canvas.height / 2;
         this.velocityY = 0;
-        this.gravity = 0.3;
-        this.jumpPower = -8;
-        this.boostPower = -10;
+        this.gravity = 0.4;
+        this.boostPower = -9;
         this.rotation = 0;
     }
     
-    update(windForce) {
-        // Zastosuj siłę wiatru
-        this.velocityY += windForce;
-        
-        // Zastosuj grawitację
+    update() {
+        // Tylko grawitacja - postać opada
         this.velocityY += this.gravity;
         
-        // Aktualizuj pozycję
+        // Aktualizuj pozycję Y
         this.y += this.velocityY;
         
-        // Ograniczenia ekranu
+        // Ograniczenia ekranu (góra)
         if (this.y < this.height / 2) {
             this.y = this.height / 2;
             this.velocityY = 0;
         }
-        if (this.y > canvas.height - this.height / 2) {
-            this.y = canvas.height - this.height / 2;
-            this.velocityY = 0;
+        
+        // Kolizja z ziemią - Game Over
+        const groundY = canvas.height - groundHeight;
+        if (this.y + this.height / 2 > groundY) {
+            return true; // Zwróć true jeśli kolizja z ziemią
         }
         
         // Rotacja w zależności od prędkości
         this.rotation = Math.min(Math.max(this.velocityY * 0.1, -0.3), 0.3);
+        return false;
     }
     
     jump() {
@@ -134,30 +136,56 @@ class Player {
     }
 }
 
-// Klasa turbiny wiatrowej
+// Klasa turbiny wiatrowej (scrolluje się z planszą)
 class WindTurbine {
-    constructor(x) {
-        this.x = x;
-        this.y = canvas.height / 2;
-        this.towerHeight = 150;
-        this.towerWidth = 20;
-        this.bladeLength = 80;
+    constructor(worldX, towerHeight) {
+        this.worldX = worldX; // Pozycja w świecie (scrolluje się)
+        this.towerHeight = towerHeight; // Długość wieży (różna dla każdej turbiny)
+        this.towerWidth = 15;
+        this.bladeLength = 60;
         this.bladeAngle = 0;
-        this.bladeSpeed = 0.05;
-        this.windLineLength = 300;
+        this.bladeSpeed = -0.03; // Odwrócony kierunek obrotu (wiatr wieje od lewej)
+        this.windLineLength = canvas.width * 0.6; // Długa linia wiatru od lewej do prawej
+    }
+    
+    getScreenX() {
+        return this.worldX - scrollOffset;
+    }
+    
+    getBaseY() {
+        // Podstawa zawsze na ziemi
+        return canvas.height - groundHeight;
+    }
+    
+    getGondolaY() {
+        // Gondola na szczycie wieży
+        return this.getBaseY() - this.towerHeight;
     }
     
     update() {
         this.bladeAngle += this.bladeSpeed;
-        this.x -= gameSpeed;
     }
     
     draw() {
-        // Wieża
+        const screenX = this.getScreenX();
+        const baseY = this.getBaseY();
+        const gondolaY = this.getGondolaY();
+        
+        // Sprawdź czy wiatrak jest na ekranie
+        if (screenX < -50 || screenX > canvas.width + 50) {
+            return; // Nie rysuj jeśli poza ekranem
+        }
+        
+        // Sprawdź czy gondola nie jest za wysoko (poza ekranem)
+        if (gondolaY < -100) {
+            return;
+        }
+        
+        // Wieża (ciemniejsza, w tle) - od gondoli do podstawy (ziemi)
         ctx.fillStyle = '#555';
         ctx.fillRect(
-            this.x - this.towerWidth / 2,
-            this.y,
+            screenX - this.towerWidth / 2,
+            gondolaY,
             this.towerWidth,
             this.towerHeight
         );
@@ -166,8 +194,8 @@ class WindTurbine {
         ctx.fillStyle = '#666';
         ctx.beginPath();
         ctx.ellipse(
-            this.x,
-            this.y,
+            screenX,
+            gondolaY,
             this.towerWidth * 1.5,
             this.towerWidth,
             0,
@@ -176,11 +204,11 @@ class WindTurbine {
         );
         ctx.fill();
         
-        // Łopaty
+        // Łopaty (odwrócone - wiatr wieje od lewej)
         ctx.strokeStyle = '#888';
         ctx.lineWidth = 4;
         ctx.save();
-        ctx.translate(this.x, this.y);
+        ctx.translate(screenX, gondolaY);
         
         for (let i = 0; i < 3; i++) {
             ctx.save();
@@ -194,125 +222,133 @@ class WindTurbine {
         
         ctx.restore();
         
-        // Linia wiatru (gradientowa smuga)
-        const gradient = ctx.createLinearGradient(
-            this.x,
-            this.y,
-            this.x - this.windLineLength,
-            this.y
-        );
-        gradient.addColorStop(0, 'rgba(135, 206, 235, 0.6)');
-        gradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.3)');
-        gradient.addColorStop(1, 'rgba(135, 206, 235, 0)');
+        // Linia wiatru (od lewej do prawej - wiatr napędza gracza)
+        const playerX = canvas.width * 0.15;
         
-        ctx.fillStyle = gradient;
-        ctx.fillRect(
-            this.x - this.windLineLength,
-            this.y - 30,
-            this.windLineLength,
-            60
-        );
-        
-        // Cząsteczki wiatru
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        for (let i = 0; i < 10; i++) {
-            const offsetX = -Math.random() * this.windLineLength;
-            const offsetY = (Math.random() - 0.5) * 40;
-            const size = Math.random() * 3 + 1;
-            ctx.beginPath();
-            ctx.arc(this.x + offsetX, this.y + offsetY, size, 0, Math.PI * 2);
-            ctx.fill();
+        // Wiatr wieje od lewej strony wiatraka w stronę gracza
+        if (screenX > playerX) {
+            const startX = Math.max(0, screenX - this.windLineLength);
+            const endX = playerX;
+            
+            if (endX > startX) {
+                const gradient = ctx.createLinearGradient(
+                    startX,
+                    gondolaY,
+                    endX,
+                    gondolaY
+                );
+                gradient.addColorStop(0, 'rgba(135, 206, 235, 0.5)');
+                gradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.3)');
+                gradient.addColorStop(1, 'rgba(135, 206, 235, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(
+                    startX,
+                    gondolaY - 40,
+                    endX - startX,
+                    80
+                );
+                
+                // Cząsteczki wiatru (poruszają się od lewej do prawej)
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                for (let i = 0; i < 10; i++) {
+                    const progress = Math.random();
+                    const offsetX = startX + (endX - startX) * progress;
+                    const offsetY = gondolaY + (Math.random() - 0.5) * 50;
+                    const size = Math.random() * 2 + 1;
+                    ctx.beginPath();
+                    ctx.arc(offsetX, offsetY, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
         }
     }
     
-    getWindForce(playerX) {
-        const distance = this.x - playerX;
-        if (distance > 0 && distance < this.windLineLength) {
-            // Siła wiatru zmniejsza się z odległością
-            return (1 - distance / this.windLineLength) * 0.15;
+    getWindForce() {
+        // Turbina generuje siłę wiatru napędzającą gracza w prawo
+        const playerX = canvas.width * 0.15;
+        const screenX = this.getScreenX();
+        const distance = Math.abs(screenX - playerX);
+        
+        // Siła wiatru zależy od odległości - im bliżej, tym silniejszy wiatr
+        if (distance < this.windLineLength && screenX > playerX) {
+            return 0.4 + (1 - distance / this.windLineLength) * 0.3; // 0.4-0.7
         }
         return 0;
     }
     
     isOffScreen() {
-        return this.x + this.towerWidth < 0;
+        const screenX = this.getScreenX();
+        return screenX + 50 < 0;
     }
 }
 
-// Klasa przeszkody
+// Klasa przeszkody (ptak - leci w stronę gracza)
 class Obstacle {
-    constructor(x, type = 'platform') {
-        this.x = x;
-        this.type = type;
-        
-        if (type === 'platform') {
-            this.width = 80;
-            this.height = 20;
-            this.y = Math.random() > 0.5 
-                ? canvas.height - 100 
-                : 100;
-        } else if (type === 'cloud') {
-            this.width = 100;
-            this.height = 50;
-            this.y = Math.random() * (canvas.height - 200) + 100;
-        } else if (type === 'bird') {
-            this.width = 40;
-            this.height = 30;
-            this.y = Math.random() * (canvas.height - 100) + 50;
-            this.velocityY = (Math.random() - 0.5) * 2;
-        }
+    constructor(worldX) {
+        this.worldX = worldX; // Pozycja w świecie
+        this.width = 35;
+        this.height = 25;
+        this.y = Math.random() * (canvas.height - groundHeight - 150) + 75;
+        this.speed = 3 + Math.random() * 2; // Prędkość lecenia w stronę gracza
+        this.velocityY = (Math.random() - 0.5) * 1.5; // Lekkie poruszanie w górę/dół
+    }
+    
+    getScreenX() {
+        return this.worldX - scrollOffset;
     }
     
     update() {
-        this.x -= gameSpeed;
-        if (this.type === 'bird') {
-            this.y += this.velocityY;
-            if (this.y < 30 || this.y > canvas.height - 30) {
-                this.velocityY *= -1;
-            }
+        // Przeszkoda leci w stronę gracza (w lewo) - scrolluje się z planszą
+        this.worldX -= this.speed;
+        
+        // Lekkie poruszanie w górę/dół
+        this.y += this.velocityY;
+        const groundY = canvas.height - groundHeight;
+        if (this.y < 30 || this.y > groundY - 30) {
+            this.velocityY *= -1;
         }
     }
     
     draw() {
-        if (this.type === 'platform') {
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-            ctx.strokeStyle = '#654321';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(this.x, this.y, this.width, this.height);
-        } else if (this.type === 'cloud') {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.beginPath();
-            ctx.arc(this.x + 20, this.y + 25, 15, 0, Math.PI * 2);
-            ctx.arc(this.x + 40, this.y + 20, 20, 0, Math.PI * 2);
-            ctx.arc(this.x + 60, this.y + 25, 15, 0, Math.PI * 2);
-            ctx.arc(this.x + 50, this.y + 35, 12, 0, Math.PI * 2);
-            ctx.arc(this.x + 30, this.y + 35, 12, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (this.type === 'bird') {
-            ctx.fillStyle = '#654321';
-            ctx.beginPath();
-            ctx.ellipse(this.x, this.y, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // Skrzydła
-            ctx.beginPath();
-            ctx.arc(this.x - 10, this.y, 8, 0, Math.PI * 2);
-            ctx.arc(this.x + 10, this.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        const screenX = this.getScreenX();
+        
+        // Uproszczony kształt ptaka
+        ctx.fillStyle = '#654321';
+        ctx.beginPath();
+        ctx.ellipse(screenX, this.y, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Skrzydła
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.arc(screenX - 8, this.y, 7, 0, Math.PI * 2);
+        ctx.arc(screenX + 8, this.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Dziób
+        ctx.fillStyle = '#FF8C00';
+        ctx.beginPath();
+        ctx.moveTo(screenX - this.width / 2, this.y);
+        ctx.lineTo(screenX - this.width / 2 - 5, this.y - 3);
+        ctx.lineTo(screenX - this.width / 2 - 5, this.y + 3);
+        ctx.closePath();
+        ctx.fill();
     }
     
     getBounds() {
+        const screenX = this.getScreenX();
         return {
-            x: this.x,
-            y: this.y,
+            x: screenX - this.width / 2,
+            y: this.y - this.height / 2,
             width: this.width,
             height: this.height
         };
     }
     
     isOffScreen() {
-        return this.x + this.width < 0;
+        const screenX = this.getScreenX();
+        return screenX + this.width < 0;
     }
 }
 
@@ -402,78 +438,70 @@ class Game {
         this.player = new Player();
         this.turbines = [];
         this.obstacles = [];
-        this.coins = [];
-        this.turbineSpacing = 400;
-        this.obstacleSpacing = 250;
-        this.coinSpacing = 200;
         this.frameCount = 0;
+        this.lastObstacleTime = 0;
+        this.obstacleInterval = 2000; // Co 2 sekundy nowa przeszkoda (w milisekundach)
+        scrollOffset = 0;
         
-        // Utwórz początkową turbinę
-        this.turbines.push(new WindTurbine(canvas.width * 0.6));
+        // Utwórz początkowe turbiny na różnych wysokościach podstawy
+        this.turbines.push(new WindTurbine(300, 80));
+        this.turbines.push(new WindTurbine(600, 150));
+        this.turbines.push(new WindTurbine(900, 100));
     }
     
     update() {
         if (gameState !== 'playing') return;
         
         this.frameCount++;
-        gameSpeed = 2 + Math.floor(this.frameCount / 1000) * 0.5;
         
-        // Oblicz siłę wiatru z najbliższej turbiny
-        let windForce = -0.1; // Podstawowa siła wiatru (lekko w górę)
-        let nearestTurbine = null;
-        let minDistance = Infinity;
-        
+        // Oblicz prędkość poziomą na podstawie siły wiatru
+        let windForce = 0;
         this.turbines.forEach(turbine => {
-            const distance = Math.abs(turbine.x - this.player.x);
-            if (distance < minDistance && turbine.x > this.player.x) {
-                minDistance = distance;
-                nearestTurbine = turbine;
-            }
+            windForce += turbine.getWindForce();
         });
+        horizontalSpeed = Math.max(0.5, windForce); // Minimalna prędkość
+        gameProgress += horizontalSpeed;
         
-        if (nearestTurbine) {
-            windForce += nearestTurbine.getWindForce(this.player.x);
+        // Scrollowanie planszy (świat przesuwa się w lewo)
+        scrollOffset += horizontalSpeed;
+        
+        // Aktualizuj gracza (tylko ruch w górę/dół)
+        const hitGround = this.player.update();
+        if (hitGround) {
+            this.gameOver();
+            return;
         }
         
-        // Aktualizuj gracza
-        this.player.update(windForce);
-        
-        // Aktualizuj turbiny
+        // Aktualizuj turbiny (tylko animacja łopat)
         this.turbines.forEach(turbine => turbine.update());
         this.turbines = this.turbines.filter(turbine => !turbine.isOffScreen());
         
-        // Dodaj nowe turbiny
-        const lastTurbineX = this.turbines.length > 0 
-            ? Math.max(...this.turbines.map(t => t.x))
-            : 0;
-        if (lastTurbineX < canvas.width + this.turbineSpacing) {
-            this.turbines.push(new WindTurbine(canvas.width + 100));
+        // Dodaj nowe turbiny w miarę scrollowania
+        const lastTurbineX = this.turbines.length > 0
+            ? Math.max(...this.turbines.map(t => t.worldX))
+            : scrollOffset;
+        
+        if (lastTurbineX - scrollOffset < canvas.width + 300) {
+            // Różne długości wież (wszystkie podstawy na ziemi)
+            const towerHeight = 100 + Math.random() * 120; // Od 100 do 220 pikseli
+            const newX = Math.max(lastTurbineX + 400, scrollOffset + canvas.width + 200);
+            this.turbines.push(new WindTurbine(newX, towerHeight));
         }
         
-        // Aktualizuj przeszkody
+        // Aktualizuj przeszkody (lecą w stronę gracza)
         this.obstacles.forEach(obstacle => obstacle.update());
         this.obstacles = this.obstacles.filter(obstacle => !obstacle.isOffScreen());
         
-        // Dodaj nowe przeszkody
-        const lastObstacleX = this.obstacles.length > 0
-            ? Math.max(...this.obstacles.map(o => o.x + o.width))
-            : 0;
-        if (lastObstacleX < canvas.width + this.obstacleSpacing) {
-            const types = ['platform', 'cloud', 'bird'];
-            const type = types[Math.floor(Math.random() * types.length)];
-            this.obstacles.push(new Obstacle(canvas.width + 100, type));
-        }
-        
-        // Aktualizuj monety
-        this.coins.forEach(coin => coin.update());
-        this.coins = this.coins.filter(coin => !coin.isOffScreen() && !coin.collected);
-        
-        // Dodaj nowe monety
-        const lastCoinX = this.coins.length > 0
-            ? Math.max(...this.coins.map(c => c.x + c.radius))
-            : 0;
-        if (lastCoinX < canvas.width + this.coinSpacing) {
-            this.coins.push(new Coin(canvas.width + 100));
+        // Dodaj nowe przeszkody (rzadziej, mniej na ekranie)
+        const currentTime = Date.now();
+        if (currentTime - this.lastObstacleTime > this.obstacleInterval) {
+            // Maksymalnie 3 przeszkody na ekranie
+            if (this.obstacles.length < 3) {
+                this.obstacles.push(new Obstacle(scrollOffset + canvas.width + 50));
+                this.lastObstacleTime = currentTime;
+                // Zwiększ częstotliwość z czasem
+                this.obstacleInterval = Math.max(1500, 2000 - Math.floor(this.frameCount / 500) * 100);
+            }
         }
         
         // Sprawdź kolizje z przeszkodami
@@ -485,14 +513,9 @@ class Game {
             }
         }
         
-        // Sprawdź zbieranie monet
-        for (let coin of this.coins) {
-            if (!coin.collected && checkCollision(playerBounds, coin.getBounds())) {
-                coin.collected = true;
-                score += 10;
-                scoreDisplay.textContent = score;
-            }
-        }
+        // Zwiększ wynik w zależności od postępu
+        score = Math.floor(gameProgress / 10);
+        scoreDisplay.textContent = score;
     }
     
     draw() {
@@ -505,28 +528,53 @@ class Game {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Chmury w tle
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        for (let i = 0; i < 5; i++) {
-            const cloudX = (this.frameCount * 0.5 + i * 200) % (canvas.width + 200) - 100;
-            const cloudY = 50 + (i * 80) % (canvas.height - 100);
+        // Chmury w tle (mniej, bardziej subtelne, scrollują się wolniej)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        for (let i = 0; i < 3; i++) {
+            const cloudWorldX = (i * 400) - (scrollOffset * 0.2);
+            const cloudX = ((cloudWorldX % 1200) + 1200) % 1200;
+            const cloudY = 60 + (i * 120) % (canvas.height - groundHeight - 120);
+            if (cloudX < canvas.width + 100) {
+                ctx.beginPath();
+                ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
+                ctx.arc(cloudX + 35, cloudY, 35, 0, Math.PI * 2);
+                ctx.arc(cloudX + 70, cloudY, 25, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // Rysuj podłoże (ziemia)
+        const groundY = canvas.height - groundHeight;
+        
+        // Główna część ziemi
+        const groundGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+        groundGradient.addColorStop(0, '#8B7355');
+        groundGradient.addColorStop(0.3, '#6B5D4F');
+        groundGradient.addColorStop(1, '#5A4A3A');
+        ctx.fillStyle = groundGradient;
+        ctx.fillRect(0, groundY, canvas.width, groundHeight);
+        
+        // Trawa na górze ziemi
+        ctx.fillStyle = '#7CB342';
+        ctx.fillRect(0, groundY, canvas.width, 8);
+        
+        // Tekstura ziemi (kamyki/ziarno)
+        ctx.fillStyle = 'rgba(90, 74, 58, 0.3)';
+        for (let i = 0; i < 20; i++) {
+            const x = (scrollOffset * 0.5 + i * 50) % canvas.width;
+            const y = groundY + 10 + Math.sin(i) * 5;
             ctx.beginPath();
-            ctx.arc(cloudX, cloudY, 30, 0, Math.PI * 2);
-            ctx.arc(cloudX + 40, cloudY, 40, 0, Math.PI * 2);
-            ctx.arc(cloudX + 80, cloudY, 30, 0, Math.PI * 2);
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
             ctx.fill();
         }
         
-        // Rysuj turbiny
+        // Rysuj turbiny w tle
         this.turbines.forEach(turbine => turbine.draw());
         
         // Rysuj przeszkody
         this.obstacles.forEach(obstacle => obstacle.draw());
         
-        // Rysuj monety
-        this.coins.forEach(coin => coin.draw());
-        
-        // Rysuj gracza
+        // Rysuj gracza (na pierwszym planie)
         this.player.draw();
     }
     
@@ -540,12 +588,19 @@ class Game {
         this.player = new Player();
         this.turbines = [];
         this.obstacles = [];
-        this.coins = [];
         this.frameCount = 0;
+        this.lastObstacleTime = 0;
+        this.obstacleInterval = 2000;
         score = 0;
-        gameSpeed = 2;
+        gameProgress = 0;
+        horizontalSpeed = 0;
+        scrollOffset = 0;
         scoreDisplay.textContent = score;
-        this.turbines.push(new WindTurbine(canvas.width * 0.6));
+        
+        // Utwórz początkowe turbiny - wszystkie podstawy na ziemi, różne długości wież
+        this.turbines.push(new WindTurbine(300, 120));  // Krótka wieża
+        this.turbines.push(new WindTurbine(600, 180)); // Średnia wieża
+        this.turbines.push(new WindTurbine(900, 150));  // Długa wieża
     }
 }
 
