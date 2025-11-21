@@ -761,6 +761,18 @@ class Game {
         this.obstacleInterval = 2000; // Co 2 sekundy nowa przeszkoda (w milisekundach)
         scrollOffset = 0;
         
+        // Gwiazdki na niebie (świąteczne)
+        this.stars = [];
+        for (let i = 0; i < 50; i++) {
+            this.stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * (canvas.height - groundHeight),
+                size: Math.random() * 2 + 1,
+                brightness: Math.random() * 0.5 + 0.5, // Jasność 0.5-1.0
+                twinkleSpeed: Math.random() * 0.005 + 0.003 // Wolniejsza szybkość migania
+            });
+        }
+        
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
         const availableHeight = canvas.height - groundHeight;
         this.turbines.push(new WindTurbine(300, 100));  // Krótka wieża
@@ -816,6 +828,14 @@ class Game {
         this.turbines.forEach(turbine => turbine.update());
         this.turbines = this.turbines.filter(turbine => !turbine.isOffScreen());
         
+        // Aktualizuj gwiazdki (miganie)
+        this.stars.forEach(star => {
+            star.brightness += star.twinkleSpeed;
+            if (star.brightness > 1.0) {
+                star.brightness = 0.5;
+            }
+        });
+        
         // Dodaj nowe turbiny w miarę scrollowania
         const lastTurbineX = this.turbines.length > 0
             ? Math.max(...this.turbines.map(t => t.worldX))
@@ -862,54 +882,60 @@ class Game {
     }
     
     draw() {
-        // Tło z gradientem
+        // Tło nocne (ciemne niebo) - świąteczne
         const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        gradient.addColorStop(0, '#87CEEB');
-        gradient.addColorStop(0.3, '#E0F6FF');
-        gradient.addColorStop(0.6, '#B0E0E6');
-        gradient.addColorStop(1, '#87CEEB');
+        gradient.addColorStop(0, '#0a0e27'); // Ciemny niebieski u góry
+        gradient.addColorStop(0.5, '#1a1f3a'); // Ciemny fioletowy w środku
+        gradient.addColorStop(1, '#2d1b3d'); // Ciemny fioletowy przy ziemi
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Chmury w tle (mniej, bardziej subtelne, scrollują się wolniej)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-        for (let i = 0; i < 3; i++) {
-            const cloudWorldX = (i * 400) - (scrollOffset * 0.2);
-            const cloudX = ((cloudWorldX % 1200) + 1200) % 1200;
-            const cloudY = 60 + (i * 120) % (canvas.height - groundHeight - 120);
-            if (cloudX < canvas.width + 100) {
-                ctx.beginPath();
-                ctx.arc(cloudX, cloudY, 25, 0, Math.PI * 2);
-                ctx.arc(cloudX + 35, cloudY, 35, 0, Math.PI * 2);
-                ctx.arc(cloudX + 70, cloudY, 25, 0, Math.PI * 2);
-                ctx.fill();
+        // Gwiazdki świecące na niebie (świąteczne)
+        this.stars.forEach(star => {
+            // Animacja migania gwiazdek
+            star.brightness += star.twinkleSpeed;
+            if (star.brightness > 1.0) {
+                star.brightness = 0.5;
             }
-        }
+            
+            // Scrollowanie gwiazdek (wolniej niż świat)
+            const starX = (star.x - scrollOffset * 0.1) % canvas.width;
+            const finalStarX = starX < 0 ? starX + canvas.width : starX;
+            
+            // Rysuj gwiazdkę
+            const alpha = 0.5 + Math.sin(star.brightness * Math.PI * 2) * 0.5; // Miganie
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(finalStarX, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Efekt świecenia (opcjonalnie - większa gwiazdka z mniejszą przezroczystością)
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(finalStarX, star.y, star.size * 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
         
-        // Rysuj podłoże (ziemia)
+        // Rysuj podłoże (śnieg)
         const groundY = canvas.height - groundHeight;
         
-        // Główna część ziemi
-        const groundGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
-        groundGradient.addColorStop(0, '#8B7355');
-        groundGradient.addColorStop(0.3, '#6B5D4F');
-        groundGradient.addColorStop(1, '#5A4A3A');
-        ctx.fillStyle = groundGradient;
+        // Główna część śniegu (biała z lekkim gradientem)
+        const snowGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+        snowGradient.addColorStop(0, '#FFFFFF'); // Biały śnieg na górze
+        snowGradient.addColorStop(0.5, '#F0F0F0'); // Lekko szary w środku
+        snowGradient.addColorStop(1, '#E0E0E0'); // Bardziej szary na dole
+        ctx.fillStyle = snowGradient;
         ctx.fillRect(0, groundY, canvas.width, groundHeight);
         
-        // Trawa na górze ziemi
-        ctx.fillStyle = '#7CB342';
-        ctx.fillRect(0, groundY, canvas.width, 8);
-        
-        // Tekstura ziemi (kamyki/ziarno) - scrolluje się w lewo (przeciwnie do scrollOffset)
-        ctx.fillStyle = 'rgba(90, 74, 58, 0.3)';
-        for (let i = 0; i < 20; i++) {
-            const x = ((-scrollOffset * 0.5) + i * 50) % canvas.width;
-            const y = groundY + 10 + Math.sin(i) * 5;
-            // Upewnij się, że x jest dodatnie
+        // Efekt śniegu (płatki śniegu) - scrolluje się w lewo
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        for (let i = 0; i < 30; i++) {
+            const x = ((-scrollOffset * 0.3) + i * 40) % canvas.width;
+            const y = groundY + 5 + Math.sin(i * 0.5) * 3;
             const finalX = x < 0 ? x + canvas.width : x;
+            // Małe płatki śniegu
             ctx.beginPath();
-            ctx.arc(finalX, y, 2, 0, Math.PI * 2);
+            ctx.arc(finalX, y, 1.5, 0, Math.PI * 2);
             ctx.fill();
         }
         
@@ -1225,6 +1251,18 @@ class Game {
         isJetpackActive = false; // Reset jetpacka
         windMomentum = 0; // Reset momentum
         // Punkty są renderowane na canvasie, nie w HTML
+        
+        // Reset gwiazdek
+        this.stars = [];
+        for (let i = 0; i < 50; i++) {
+            this.stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * (canvas.height - groundHeight),
+                size: Math.random() * 2 + 1,
+                brightness: Math.random() * 0.5 + 0.5,
+                twinkleSpeed: Math.random() * 0.005 + 0.003 // Wolniejsza szybkość migania
+            });
+        }
         
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
         const availableHeight = canvas.height - groundHeight;
