@@ -49,6 +49,7 @@ let gameState = 'start'; // 'start', 'playing', 'gameOver'
 let score = 0;
 let horizontalSpeed = 0; // Prędkość pozioma kontrolowana przez wiatr
 let logoImage = null;
+let logoBigImage = null; // Większe logo na banery
 let gameProgress = 0; // Postęp w grze (odległość przebyta)
 let scrollOffset = 0; // Offset scrollowania planszy
 const groundHeight = 80; // Wysokość podłoża
@@ -56,11 +57,18 @@ let isJetpackActive = false; // Czy jetpack jest aktywny
 let windMomentum = 0; // Momentum wiatru - stopniowo spada po wyjściu ze smugi
 const momentumDecay = 0.985; // Współczynnik spadku momentum (0.985 = spada o 1.5% co frame - spowolnione)
 
-// Załaduj logo
+// Załaduj logo (małe - na postaci)
 const logoImg = new Image();
 logoImg.src = 'logo.svg';
 logoImg.onload = () => {
     logoImage = logoImg;
+};
+
+// Załaduj większe logo (na banery)
+const logoBigImg = new Image();
+logoBigImg.src = 'logoBig.svg';
+logoBigImg.onload = () => {
+    logoBigImage = logoBigImg;
 };
 
 // Klasa gracza
@@ -814,6 +822,17 @@ class Game {
             });
         }
         
+        // Banery z logo w tle
+        this.banners = [];
+        for (let i = 0; i < 3; i++) {
+            this.banners.push({
+                worldX: (i + 1) * 1500, // Co 1500 pikseli baner
+                y: (canvas.height - groundHeight) * 0.625 + Math.random() * (canvas.height - groundHeight) * 0.1875, // Niżej o 25% (62.5-81.25% ekranu zamiast 50-75%)
+                width: 300, // Szerszy baner dla większego logo
+                height: 120 // Wyższy baner
+            });
+        }
+        
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
         const availableHeight = canvas.height - groundHeight;
         this.turbines.push(new WindTurbine(300, 100));  // Krótka wieża
@@ -911,6 +930,27 @@ class Game {
                 layer: 'near'
             });
         }
+        
+        // Dodaj nowe banery w miarę scrollowania
+        const lastBannerX = this.banners.length > 0
+            ? Math.max(...this.banners.map(b => b.worldX))
+            : scrollOffset;
+        
+        if (lastBannerX - scrollOffset < canvas.width + 1500) {
+            const newX = Math.max(lastBannerX + 1500, scrollOffset + canvas.width + 500);
+            this.banners.push({
+                worldX: newX,
+                y: (canvas.height - groundHeight) * 0.625 + Math.random() * (canvas.height - groundHeight) * 0.1875, // Niżej o 25% (62.5-81.25% ekranu)
+                width: 300,
+                height: 120
+            });
+        }
+        
+        // Usuń banery, które są daleko poza ekranem
+        this.banners = this.banners.filter(banner => {
+            const screenX = banner.worldX - scrollOffset;
+            return screenX + banner.width > -200;
+        });
         
         // Usuń góry, które są daleko poza ekranem (różne dla różnych warstw)
         this.mountains = this.mountains.filter(mountain => {
@@ -1063,6 +1103,61 @@ class Game {
             ctx.lineTo(screenX + mountain.width, baseY);
             ctx.closePath();
             ctx.fill();
+        });
+        
+        // Rysuj banery z logo w tle (po górach, przed śniegiem)
+        this.banners.forEach(banner => {
+            const screenX = banner.worldX - scrollOffset;
+            const groundY = canvas.height - groundHeight;
+            
+            // Sprawdź czy baner jest widoczny
+            if (screenX + banner.width < 0 || screenX > canvas.width) {
+                return; // Poza ekranem
+            }
+            
+            ctx.save();
+            
+            // Słupki po bokach (od ziemi do banera) - ciemniejsze kolory (nie przezroczystość)
+            const poleWidth = 8; // Szerokość słupka
+            const poleHeight = banner.y - groundY; // Wysokość od ziemi do banera
+            
+            // Lewy słupek (ciemniejszy szary zamiast białego)
+            ctx.fillStyle = '#B0B0B0'; // Jasnoszary zamiast białego
+            ctx.fillRect(screenX - poleWidth / 2, groundY, poleWidth, poleHeight);
+            
+            // Prawy słupek
+            ctx.fillRect(screenX + banner.width - poleWidth / 2, groundY, poleWidth, poleHeight);
+            
+            // Tło banera (jasnoszare zamiast białego - wyciemnione)
+            ctx.fillStyle = '#D0D0D0'; // Jasnoszary zamiast białego
+            ctx.beginPath();
+            ctx.roundRect(screenX, banner.y - banner.height / 2, banner.width, banner.height, 5);
+            ctx.fill();
+            
+            // Ramka banera (szarawa, pasująca do koloru banera)
+            ctx.strokeStyle = '#B8B8B8'; // Szarawa ramka, nieco ciemniejsza niż tło banera (#D0D0D0)
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(screenX, banner.y - banner.height / 2, banner.width, banner.height, 5);
+            ctx.stroke();
+            
+            // Logo na banerze - zajmuje całą szerokość baneru (z małym paddingiem)
+            if (logoBigImage) {
+                const padding = 5; // Mały padding dookoła
+                const logoWidth = banner.width - padding * 2; // Cała szerokość minus padding
+                const logoHeight = banner.height - padding * 2; // Cała wysokość minus padding
+                const logoX = screenX + padding;
+                const logoY = banner.y - banner.height / 2 + padding;
+                
+                // Najpierw narysuj logo
+                ctx.drawImage(logoBigImage, logoX, logoY, logoWidth, logoHeight);
+                
+                // Potem dodaj ciemny overlay dla efektu wyciemnienia (nie przezroczystość)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; // Ciemny overlay (30% czarny) - wyciemnia bez przezroczystości
+                ctx.fillRect(logoX, logoY, logoWidth, logoHeight);
+            }
+            
+            ctx.restore();
         });
         
         // Rysuj podłoże (śnieg z teksturą)
@@ -1483,6 +1578,17 @@ class Game {
                 width: Math.random() * 220 + 160,
                 parallaxSpeed: 0.4,
                 layer: 'near'
+            });
+        }
+        
+        // Reset banerów z logo
+        this.banners = [];
+        for (let i = 0; i < 3; i++) {
+            this.banners.push({
+                worldX: (i + 1) * 1500,
+                y: (canvas.height - groundHeight) * 0.625 + Math.random() * (canvas.height - groundHeight) * 0.1875, // Niżej o 25% (62.5-81.25% ekranu)
+                width: 300,
+                height: 120
             });
         }
         
