@@ -80,7 +80,8 @@ class Player {
         this.y = canvas.height / 2;
         this.velocityY = 0;
         this.gravity = 0.25; // Lżejsza grawitacja dla płynniejszego ruchu
-        this.jetpackPower = -0.6; // Siła jetpacka (ujemna = w górę) - silniejsza
+        this.balloonPower = -0.6; // Siła balonu (ujemna = w górę) - silniejsza
+        this.balloonSize = 1.0; // Rozmiar balonu (1.0 = normalny, zwiększa się gdy aktywny)
         this.maxUpwardSpeed = -7; // Maksymalna prędkość w górę
         this.maxDownwardSpeed = 5; // Maksymalna prędkość w dół
         this.rotation = 0;
@@ -88,13 +89,15 @@ class Player {
     }
     
     update() {
-        // Jetpack - płynne unoszenie się w górę
-        if (isJetpackActive) {
-            this.velocityY += this.jetpackPower;
+        // Balon - płynne unoszenie się w górę
+        if (isJetpackActive) { // Używamy tej samej zmiennej, ale teraz to balon
+            this.velocityY += this.balloonPower;
             // Ograniczenie maksymalnej prędkości w górę
             if (this.velocityY < this.maxUpwardSpeed) {
                 this.velocityY = this.maxUpwardSpeed;
             }
+            // Balon się powiększa (napełnia gorącym powietrzem)
+            this.balloonSize = Math.min(1.3, this.balloonSize + 0.02);
         } else {
             // Grawitacja - powolne opadanie
             this.velocityY += this.gravity;
@@ -102,6 +105,8 @@ class Player {
             if (this.velocityY > this.maxDownwardSpeed) {
                 this.velocityY = this.maxDownwardSpeed;
             }
+            // Balon się zmniejsza (opróżnia)
+            this.balloonSize = Math.max(1.0, this.balloonSize - 0.02);
         }
         
         // Aktualizuj pozycję Y
@@ -281,37 +286,82 @@ class Player {
         ctx.arc(0, smileY - smileHeight, smileWidth, 0.2, Math.PI - 0.2);
         ctx.stroke();
         
-        // Jetpack - płomienie gdy aktywny
+        // Balon na gorące powietrze - nad postacią
+        const balloonRadius = (this.width * 0.8) * this.balloonSize; // Rozmiar balonu zależny od napełnienia
+        const balloonY = -this.height / 2 - balloonRadius - 10; // Pozycja nad głową
+        
+        // Balon (okrągły, kolorowy)
+        const balloonGradient = ctx.createRadialGradient(0, balloonY, 0, 0, balloonY, balloonRadius);
+        balloonGradient.addColorStop(0, '#FF6B6B'); // Czerwony u góry
+        balloonGradient.addColorStop(0.3, '#FF8E8E'); // Jaśniejszy czerwony
+        balloonGradient.addColorStop(0.6, '#FFB3B3'); // Różowy
+        balloonGradient.addColorStop(1, '#FFD4D4'); // Bardzo jasny różowy u dołu
+        
+        ctx.fillStyle = balloonGradient;
+        ctx.beginPath();
+        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Obramowanie balonu
+        ctx.strokeStyle = '#FF4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Gorące powietrze (widoczne gdy balon aktywny)
         if (isJetpackActive) {
             ctx.save();
-            ctx.translate(0, this.height / 2);
+            const heatY = balloonY + balloonRadius;
+            const heatGradient = ctx.createLinearGradient(0, heatY, 0, heatY + 15);
+            heatGradient.addColorStop(0, 'rgba(255, 200, 0, 0.6)');
+            heatGradient.addColorStop(0.5, 'rgba(255, 150, 0, 0.4)');
+            heatGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
             
-            // Płomienie jetpacka
-            const flameGradient = ctx.createLinearGradient(0, 0, 0, 25);
-            flameGradient.addColorStop(0, 'rgba(255, 200, 0, 0.9)');
-            flameGradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.7)');
-            flameGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
-            
-            ctx.fillStyle = flameGradient;
+            ctx.fillStyle = heatGradient;
             ctx.beginPath();
-            // Lewy płomień
-            ctx.moveTo(-this.width / 4, 0);
-            ctx.lineTo(-this.width / 6, 20);
-            ctx.lineTo(-this.width / 8, 25);
-            ctx.lineTo(-this.width / 5, 20);
-            ctx.closePath();
+            ctx.ellipse(0, heatY + 7, balloonRadius * 0.4, 15, 0, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Prawy płomień
-            ctx.beginPath();
-            ctx.moveTo(this.width / 4, 0);
-            ctx.lineTo(this.width / 6, 20);
-            ctx.lineTo(this.width / 8, 25);
-            ctx.lineTo(this.width / 5, 20);
-            ctx.closePath();
-            ctx.fill();
-            
             ctx.restore();
+        }
+        
+        // Liny łączące balon z koszem (4 linie)
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 2;
+        const basketTopY = this.height / 2 + 5; // Górna część kosza
+        for (let i = -1; i <= 1; i += 2) {
+            ctx.beginPath();
+            ctx.moveTo(i * balloonRadius * 0.3, balloonY + balloonRadius);
+            ctx.lineTo(i * this.width * 0.3, basketTopY);
+            ctx.stroke();
+        }
+        
+        // Kosz (pod postacią)
+        const basketWidth = this.width * 0.7;
+        const basketHeight = this.height * 0.3;
+        const basketY = this.height / 2;
+        
+        // Kosz (prostokąt z zaokrąglonymi rogami)
+        ctx.fillStyle = '#8B4513'; // Brązowy kosz
+        ctx.beginPath();
+        ctx.roundRect(-basketWidth / 2, basketY, basketWidth, basketHeight, 3);
+        ctx.fill();
+        
+        // Obramowanie kosza
+        ctx.strokeStyle = '#654321';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-basketWidth / 2, basketY, basketWidth, basketHeight, 3);
+        ctx.stroke();
+        
+        // Wzór na koszu (poziome linie)
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 3; i++) {
+            ctx.beginPath();
+            ctx.moveTo(-basketWidth / 2, basketY + (basketHeight / 3) * i);
+            ctx.lineTo(basketWidth / 2, basketY + (basketHeight / 3) * i);
+            ctx.stroke();
         }
         
         ctx.restore();
@@ -1455,7 +1505,7 @@ class Game {
         // Instrukcje
         ctx.fillStyle = '#888';
         ctx.font = 'italic 14px Arial';
-        ctx.fillText('Przytrzymaj, aby użyć jetpacka', menuX, menuY + 100);
+        ctx.fillText('Przytrzymaj, aby napełnić balon', menuX, menuY + 100);
     }
     
     drawGameOverScreen() {
