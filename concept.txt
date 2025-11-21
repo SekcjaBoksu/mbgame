@@ -1,145 +1,67 @@
-KONCEPCJA GRY - WIND RUNNER (WERSJA UPROSZCZONA)
-==================================================
+KONCEPCJA GRY - WIND RUNNER (WERSJA REFAKTOROWANA - ŚCIGANIE Z CZASEM)
+=======================================================================
 
-GŁÓWNA MECHANIKA:
------------------
-1. POSTAĆ BOHATERA:
-   - Porusza się W GÓRĘ (kontrola gracza - jetpack, przytrzymanie)
-   - Naturalnie OPADA W DÓŁ (grawitacja)
-   - Pozycja pozioma (X) jest STAŁA - postać jest w jednym miejscu na osi X
-   - Prędkość pozioma (przesuwanie w prawo) jest kontrolowana przez SIŁĘ WIATRU z wiatraków
+GŁÓWNA MECHANIKA - NOWA KONCEPCJA:
+-----------------------------------
+1. ŚCIGANIE Z CZASEM:
+   - Gra ma być możliwa do UKOŃCZENIA (nie nieskończona)
+   - Maksymalny czas: 60 SEKUND
+   - Gracz musi dotrzeć do METY przed upływem czasu
+   - Tempo ukończenia zależy od:
+     * Korzystania z boostów prędkości (wiatraki)
+     * Utrzymywania wysokiej prędkości
+     * Efektywnego wykorzystania momentum wiatru
 
-2. SIŁA WIATRU - ZAKTUALIZOWANE (SUKCES - SMUGI DZIAŁAJĄ PRAWIDŁOWO):
-   - Wiatraki generują siłę wiatru, która przesuwa postać w prawo
-   - Wizualna "linia wiatru" (gradient) pokazuje przepływ powietrza
-   - **WAŻNE: Gradient wiatru zaczyna się PRZY WIATRAKU i idzie W PRAWO (w plecy gracza)**
-     - Wiatr wieje w plecy gracza, więc gradient pokazuje wiatr od wiatraka w prawo
-     - Gradient jest widoczny na CAŁEJ DŁUGOŚCI od wiatraka w prawo (do końca ekranu lub do końca windVisualLength)
-     - Gradient jest silniejszy przy wiatraku i zanika w prawo
-     - Gradient zawiera białe cząsteczki poruszające się w prawo
-     - **ROZDZIELENIE WIZUALNE I MECHANICZNE:**
-       - `windVisualLength` = 0.6 × szerokość ekranu (wizualna długość smugi - krótsza, ładniejsza)
-       - `windLineLength` = 2.0 × szerokość ekranu (mechaniczna długość - dla boostu, dłuższa)
-       - Smuga wizualnie jest krótsza, ale boost działa na dłuższym zasięgu
-   - **WAŻNE: Renderowanie smugi**
-     - Smuga jest rysowana PRZED wiatrakiem w metodzie draw()
-     - Smuga jest widoczna nawet gdy wiatrak zniknie z ekranu (dopóki smuga przecina ekran)
-     - Wiatrak jest usuwany dopiero gdy smuga całkowicie zniknie (z marginesem 50% szerokości ekranu)
-   - **WAŻNE: Wiatraki wyrastają z ziemi, różne wysokości wież**
-     - Podstawy wiatraków ZAWSZE na ziemi
-     - Zmienia się tylko wysokość wieży (różne wysokości gondoli)
-   - **WAŻNE: Boost działa gdy MIJAMY wiatrak (wiatrak po lewej stronie gracza)**
-     - Boost NIE działa gdy wiatrak jest przed nami (po prawej stronie gracza)
-     - Boost działa TYLKO gdy wiatrak jest po lewej stronie gracza (screenX < playerX)
-     - Gdy mijamy wiatrak, wiatr wieje w plecy gracza i przyspiesza nas w prawo
-     - Im bliżej wiatraka (mniejsza odległość), tym silniejszy boost
-   - **WAŻNE: Przebywanie w prądzie powietrznym ZNACZNIE PRZYSPIESZA prędkość przesuwania w prawo**
-     - Gdy gracz jest w obszarze wiatru, prędkość pozioma jest znacznie większa (0.8-2.0)
-     - Im bliżej źródła wiatru (wiatraka), tym silniejszy efekt
-   - **WAŻNE: Kierunek obrotu łopat**
-     - Łopaty obracają się tak, aby wizualnie pokazywać wiatr wiejący w prawo (w plecy gracza)
-   - Bazowa prędkość (bez wiatru): 0.7 (zwiększona)
-   - Im więcej wiatru, tym szybciej postać porusza się w prawo
+2. CEL GRY:
+   - Dotrzeć do METY przed upływem 60 sekund
+   - Im szybciej dotrzesz, tym lepiej
+   - Gra kończy się sukcesem po dotarciu do mety
+   - Gra kończy się porażką jeśli:
+     * Upłynie 60 sekund
+     * Postać uderzy w ziemię
 
-3. PRZESZKODY:
-   - Przeszkody (ptaki) LECĄ W STRONĘ BOHATERA (z prawej strony w lewo)
-   - Nie przesuwają się razem ze światem - są niezależne
-   - Gracz musi unikać kolizji z przeszkodami
-   - Na razie używamy uproszczonych kształtów (np. prostokąty, koła)
+3. INTERFEJS UŻYTKOWNIKA - ZMIANY:
+   - USUNIĘTE: Licznik punktów
+   - DODANE: Pasek progresu z:
+     * Postacią gracza (po lewej stronie)
+     * Symbolem mety (na końcu paska, po prawej stronie)
+     * Wizualizacją postępu w drodze do mety
+   - ZACHOWANE: Pasek prędkości (Prędkość)
+   - DODANE: Timer (odliczanie od 60 do 0)
 
-4. EKRAN:
-   - WĄSKI ekran (9:16 - jak telefon, pionowy)
-   - Mniej elementów na ekranie jednocześnie
-   - Czystszy, bardziej minimalistyczny wygląd
+4. MECHANIKA POSTĘPU:
+   - Postęp jest mierzony odległością przebywaną w świecie
+   - Meta znajduje się w określonej odległości (np. 5000 pikseli)
+   - Pasek progresu pokazuje jak daleko jesteśmy od mety
+   - Postać na pasku przesuwa się w prawo w miarę postępu
 
-5. ELEMENTY GRY:
-   - Wiatraki na różnych wysokościach (generują wiatr)
-   - Postać bohatera (po lewej stronie, stała pozycja X)
-   - Przeszkody lecące w stronę gracza (z prawej w lewo)
-   - Licznik punktów (renderowany na canvasie, u góry)
-   - Ekran startowy i Game Over (renderowane na canvasie)
+5. ELEMENTY DO DODANIA (PÓŹNIEJ):
+   - Konkretny cel wizualny (meta na ekranie)
+   - Animacja kończąca grę (sukces)
+   - Ekran sukcesu z czasem ukończenia
 
-6. FIZYKA:
-   - Grawitacja: postać opada w dół
-   - Jetpack: przytrzymanie aktywuje jetpack (płynne unoszenie)
-   - Wiatr: zwiększa prędkość poziomą (przesuwanie w prawo)
-     - **Przebywanie w prądzie powietrznym ZNACZNIE przyspiesza**
-   - Kolizje: kontakt z przeszkodą lub ziemią = Game Over
+TECHNICZNE SZCZEGÓŁY:
+---------------------
+- Postać w balonie na gorące powietrze
+- Sterowanie: przytrzymanie = napełnianie balonu (w górę), puszczenie = opadanie
+- Wiatraki generują boost prędkości (momentum)
+- Brak przeciwników (dla starszych graczy)
+- Świąteczny motyw (noc, śnieg, gwiazdki, góry)
+- Banery z logo w tle
 
-7. WIZUALIZACJA:
-   - Mniej elementów na ekranie
-   - Więcej przestrzeni
-   - Czytelniejszy interfejs
-   - Wiatraki na różnych wysokościach (na całej wysokości ekranu)
-   - Linia wiatru (gradient) od lewej do prawej jako wizualny efekt
+STANY GRY:
+----------
+- 'start': Menu startowe + animacja intro (postać nadlatuje z lewej)
+- 'playing': Rozgrywka (ściganie z czasem)
+- 'gameOver': Porażka (czas minął lub uderzenie w ziemię)
+- 'victory': Sukces (dotarcie do mety) - DO DODANIA
 
 ZMIANY W STOSUNKU DO POPRZEDNIEJ WERSJI:
 ----------------------------------------
-- Świat NIE przesuwa się w lewo
-- Postać porusza się w prawo (kontrolowane przez wiatr)
-- Przeszkody lecą w stronę gracza (z prawej w lewo)
-- Wąski ekran (9:16)
-- Mniej elementów jednocześnie
-- Prostsze przeszkody (na razie)
-- Jetpack zamiast skoków
-- Wiatraki na różnych wysokościach (na całej wysokości ekranu)
-- Gradient wiatru od lewej do prawej
-- Przyspieszenie w prądzie powietrznym
-
-NOWE WYMAGANIA (AKTUALIZACJA):
-------------------------------
-1. **Gradient wiatru:**
-   - ✅ SUKCES: Gradient jest widoczny na CAŁEJ DŁUGOŚCI od wiatraka w prawo
-   - Musi iść OD LEWEJ DO PRAWEJ (nie od prawej do lewej)
-   - Wizualnie pokazuje przepływ powietrza w stronę gracza
-   - Zaczyna się przy wiatraku (gondola) i rozciąga się w prawo do końca ekranu lub do końca windLineLength
-
-2. **Pozycjonowanie wiatraków:**
-   - Wiatraki pojawiają się na RÓŻNYCH WYSOKOŚCIACH
-   - Na CAŁEJ wysokości ekranu (nie tylko przy ziemi)
-   - Podstawy wiatraków ZAWSZE na ziemi (różne wysokości wież)
-
-3. **Mechanika prądu powietrznego:**
-   - ✅ SUKCES: Boost działa gdy mijamy wiatrak (wiatrak po lewej stronie gracza)
-   - Boost NIE działa gdy wiatrak jest przed nami (po prawej stronie gracza)
-   - Gdy gracz jest w obszarze wiatru (w prądzie powietrznym), prędkość pozioma ZNACZNIE się zwiększa (0.8-2.0)
-   - Im bliżej źródła wiatru, tym silniejszy efekt przyspieszenia
-   - To kluczowy element gameplayu - gracz musi manewrować, aby być w prądzie powietrznym
-
-4. **Bazowa prędkość:**
-   - Gdy nie ma wiatru z żadnego wiatraka: 0.7 (zwiększona)
-
-5. **Renderowanie smugi wiatru:**
-   - ✅ SUKCES: Smuga jest rysowana PRZED wiatrakiem w metodzie draw()
-   - Smuga jest widoczna nawet gdy wiatrak zniknie z ekranu (dopóki smuga przecina ekran)
-   - Wiatrak jest usuwany dopiero gdy smuga całkowicie zniknie (z marginesem 50% szerokości ekranu)
-   - Rozdzielenie długości wizualnej (0.6 × szerokość) od mechanicznej (2.0 × szerokość)
-   - Wizualnie smuga jest krótsza i ładniejsza, ale boost działa na dłuższym zasięgu
-   - **Stożkowy kształt smugi:**
-     - Smuga zaczyna się wąsko przy wiatraku (30px) i poszerza się w prawo (do 120px)
-     - Kształt trapezu zamiast prostokąta - bardziej naturalny wygląd
-     - Gradient z maksymalną przezroczystością 0.6 (bardziej subtelny)
-
-6. **Mechanika momentum:**
-   - ✅ SUKCES: Boost pozostaje z graczem po wyjściu ze smugi wiatru
-   - Momentum stopniowo spada (mnożone przez 0.97 co frame = spada o 3% na klatkę)
-   - Gdy gracz jest w smudze, momentum jest ustawiane na aktualną siłę wiatru
-   - Gdy gracz wyjdzie ze smugi, momentum stopniowo zanika zamiast natychmiast znikać
-   - Prędkość używa maksimum z aktualnej siły wiatru i momentum
-
-7. **Postać bohatera:**
-   - ✅ SUKCES: Dopracowana postać z twarzą, ramionami, korpusem i nogami
-   - Twarz z oczami (dwie czarne kropki) i uśmiechem
-   - Uśmiech reaguje na wiatr: mocny uśmiech w podmuchu (1.0), lekki poza nim (0.3)
-   - Ramiona, korpus (tułów) i nogi są wyraźnie widoczne
-   - Logo klienta na koszulce
-   - Jetpack z płomieniami gdy aktywny
-   - **Włosy:** Zakomentowane na razie (do powrotu później)
-
-8. **Wysokości wiatraków:**
-   - ✅ SUKCES: Zwiększone zróżnicowanie wysokości wiatraków
-   - Wysokość wieży: od 80px do 70% dostępnej wysokości ekranu
-   - Przykład: przy wysokości ekranu 800px i groundHeight 80px, maksymalna wysokość to 504px (70% z 720px)
-   - Wiatraki mogą teraz przekraczać 30% wysokości planszy
-   - Początkowe turbiny: 100px, 50% i 70% dostępnej wysokości
-
+- USUNIĘTE: Przeciwnicy (ptaki)
+- USUNIĘTE: Licznik punktów
+- USUNIĘTE: Animacja włosów
+- DODANE: Timer (60 sekund)
+- DODANE: Meta (cel do osiągnięcia)
+- DODANE: Pasek progresu zamiast punktów
+- ZMIENIONE: Gra ma koniec (meta), nie jest nieskończona

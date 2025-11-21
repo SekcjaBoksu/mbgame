@@ -87,7 +87,6 @@ class Player {
         this.maxUpwardSpeed = -7; // Maksymalna prędkość w górę
         this.maxDownwardSpeed = 5; // Maksymalna prędkość w dół
         this.rotation = 0;
-        this.hairAnimation = 0; // Animacja włosów
     }
     
     update() {
@@ -129,9 +128,6 @@ class Player {
         // Rotacja w zależności od prędkości (bardziej subtelna)
         this.rotation = Math.min(Math.max(this.velocityY * 0.08, -0.2), 0.2);
         
-        // Animacja włosów - zależna od prędkości i czasu (bardziej dynamiczna)
-        this.hairAnimation += 0.15 + Math.abs(this.velocityY) * 0.08;
-        
         return false;
     }
     
@@ -155,11 +151,6 @@ class Player {
         const speedPercent = Math.min(1, Math.max(0, (currentSpeed - minSpeed) / (maxSpeed - minSpeed)));
         // Uśmiech od 0.3 (wolno) do 1.0 (szybko) - z limitem
         const smileIntensity = 0.3 + (speedPercent * 0.7); // 0.3 do 1.0
-        
-        // Oblicz siłę wiatru dla animacji włosów
-        const windStrength = isInWindStream ? 1.5 : 0.3;
-        const speedStrength = Math.abs(this.velocityY) * 0.1;
-        const totalWindEffect = windStrength + speedStrength;
         
         // NOGI (na dole)
         ctx.fillStyle = '#2C5F8D';
@@ -200,71 +191,6 @@ class Player {
         ctx.beginPath();
         ctx.arc(0, -this.height / 2.5, this.width / 4, 0, Math.PI * 2);
         ctx.fill();
-        
-        // WŁOSY - ZAKOMENTOWANE (na razie)
-        /*
-        const headY = -this.height / 2.5;
-        const headRadius = this.width / 4;
-        
-        // Główne pasmo włosów na górze głowy - bardziej widoczne i animowane
-        ctx.fillStyle = '#1a1a1a'; // Kruczoczarne
-        ctx.beginPath();
-        const topWave = Math.sin(this.hairAnimation) * totalWindEffect;
-        const topWaveY = Math.cos(this.hairAnimation * 0.8) * totalWindEffect * 0.5;
-        ctx.ellipse(
-            topWave * 4, // Większa animacja w poziomie
-            headY - headRadius * 0.85 + topWaveY,
-            headRadius * 0.65 + Math.abs(topWave) * 1.5,
-            headRadius * 0.25 + Math.abs(topWaveY) * 0.5,
-            0,
-            0,
-            Math.PI * 2
-        );
-        ctx.fill();
-        
-        // Boki głowy - pasma włosów
-        ctx.fillStyle = '#0d0d0d'; // Jeszcze ciemniejsze dla głębi
-        for (let i = 0; i < 6; i++) {
-            const angle = (i - 3) * 0.25; // Pozycja pasma
-            const wave = Math.sin(this.hairAnimation + i * 0.6) * totalWindEffect;
-            const waveY = Math.cos(this.hairAnimation * 0.7 + i * 0.4) * totalWindEffect * 0.3;
-            const x = Math.sin(angle) * headRadius * 0.85;
-            const y = headY - headRadius * 0.6 + Math.cos(angle) * headRadius * 0.2 + waveY;
-            
-            ctx.beginPath();
-            // Każde pasmo jako elipsa - bardziej realistyczne
-            ctx.ellipse(
-                x + wave * 5, // Większa animacja w poziomie
-                y,
-                2.5 + Math.abs(wave) * 1.5,
-                4 + Math.abs(waveY) * 2,
-                angle + wave * 0.3, // Rotacja zależna od wiatru
-                0,
-                Math.PI * 2
-            );
-            ctx.fill();
-        }
-        
-        // Przednia część włosów (grzywka) - bardziej widoczna
-        ctx.fillStyle = '#1a1a1a';
-        for (let i = 0; i < 4; i++) {
-            const offset = (i - 1.5) * 4;
-            const wave = Math.sin(this.hairAnimation * 1.2 + i * 0.4) * totalWindEffect;
-            const waveY = Math.cos(this.hairAnimation * 0.9 + i * 0.3) * totalWindEffect * 0.4;
-            
-            ctx.beginPath();
-            ctx.ellipse(
-                offset + wave * 3,
-                headY - headRadius * 0.7 + waveY,
-                2 + Math.abs(wave) * 1,
-                5 + Math.abs(waveY) * 1.5,
-                wave * 0.2,
-                0,
-                Math.PI * 2
-            );
-            ctx.fill();
-        }
-        */
         
         // TWARZ - oczy
         ctx.fillStyle = '#000';
@@ -679,75 +605,6 @@ class WindTurbine {
     }
 }
 
-// Klasa przeszkody (ptak - leci w stronę gracza)
-class Obstacle {
-    constructor(worldX) {
-        this.worldX = worldX; // Pozycja w świecie
-        this.width = 35;
-        this.height = 25;
-        this.y = Math.random() * (canvas.height - groundHeight - 150) + 75;
-        this.speed = 3 + Math.random() * 2; // Prędkość lecenia w stronę gracza
-        this.velocityY = (Math.random() - 0.5) * 1.5; // Lekkie poruszanie w górę/dół
-    }
-    
-    getScreenX() {
-        return this.worldX - scrollOffset;
-    }
-    
-    update() {
-        // Przeszkoda leci w stronę gracza (w lewo) - scrolluje się z planszą
-        this.worldX -= this.speed;
-        
-        // Lekkie poruszanie w górę/dół
-        this.y += this.velocityY;
-        const groundY = canvas.height - groundHeight;
-        if (this.y < 30 || this.y > groundY - 30) {
-            this.velocityY *= -1;
-        }
-    }
-    
-    draw() {
-        const screenX = this.getScreenX();
-        
-        // Uproszczony kształt ptaka
-        ctx.fillStyle = '#654321';
-        ctx.beginPath();
-        ctx.ellipse(screenX, this.y, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Skrzydła
-        ctx.fillStyle = '#8B4513';
-        ctx.beginPath();
-        ctx.arc(screenX - 8, this.y, 7, 0, Math.PI * 2);
-        ctx.arc(screenX + 8, this.y, 7, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Dziób
-        ctx.fillStyle = '#FF8C00';
-        ctx.beginPath();
-        ctx.moveTo(screenX - this.width / 2, this.y);
-        ctx.lineTo(screenX - this.width / 2 - 5, this.y - 3);
-        ctx.lineTo(screenX - this.width / 2 - 5, this.y + 3);
-        ctx.closePath();
-        ctx.fill();
-    }
-    
-    getBounds() {
-        const screenX = this.getScreenX();
-        return {
-            x: screenX - this.width / 2,
-            y: this.y - this.height / 2,
-            width: this.width,
-            height: this.height
-        };
-    }
-    
-    isOffScreen() {
-        const screenX = this.getScreenX();
-        return screenX + this.width < 0;
-    }
-}
-
 // Klasa monety
 class Coin {
     constructor(x) {
@@ -833,10 +690,7 @@ class Game {
     constructor() {
         this.player = new Player();
         this.turbines = [];
-        this.obstacles = [];
         this.frameCount = 0;
-        this.lastObstacleTime = 0;
-        this.obstacleInterval = 2000; // Co 2 sekundy nowa przeszkoda (w milisekundach)
         scrollOffset = 0;
         
         // Gwiazdki na niebie (świąteczne)
@@ -1034,31 +888,6 @@ class Game {
             const towerHeight = minHeight + Math.random() * (maxHeight - minHeight);
             const newX = Math.max(lastTurbineX + 400, scrollOffset + canvas.width + 200);
             this.turbines.push(new WindTurbine(newX, towerHeight));
-        }
-        
-        // Aktualizuj przeszkody (lecą w stronę gracza)
-        this.obstacles.forEach(obstacle => obstacle.update());
-        this.obstacles = this.obstacles.filter(obstacle => !obstacle.isOffScreen());
-        
-        // Dodaj nowe przeszkody (rzadziej, mniej na ekranie)
-        const currentTime = Date.now();
-        if (currentTime - this.lastObstacleTime > this.obstacleInterval) {
-            // Maksymalnie 3 przeszkody na ekranie
-            if (this.obstacles.length < 3) {
-                this.obstacles.push(new Obstacle(scrollOffset + canvas.width + 50));
-                this.lastObstacleTime = currentTime;
-                // Zwiększ częstotliwość z czasem
-                this.obstacleInterval = Math.max(1500, 2000 - Math.floor(this.frameCount / 500) * 100);
-            }
-        }
-        
-        // Sprawdź kolizje z przeszkodami
-        const playerBounds = this.player.getBounds();
-        for (let obstacle of this.obstacles) {
-            if (checkCollision(playerBounds, obstacle.getBounds())) {
-                this.gameOver();
-                return;
-            }
         }
         
         // Zwiększ wynik w zależności od postępu
@@ -1297,9 +1126,6 @@ class Game {
         
         // Rysuj turbiny w tle
         this.turbines.forEach(turbine => turbine.draw());
-        
-        // Rysuj przeszkody
-        this.obstacles.forEach(obstacle => obstacle.draw());
         
         // Rysuj gracza (na pierwszym planie) - podczas gry i animacji intro
         if (gameState === 'playing' || (gameState === 'start' && introAnimationProgress > 0)) {
@@ -1613,10 +1439,7 @@ class Game {
     reset() {
         this.player = new Player();
         this.turbines = [];
-        this.obstacles = [];
         this.frameCount = 0;
-        this.lastObstacleTime = 0;
-        this.obstacleInterval = 2000;
         score = 0;
         gameProgress = 0;
         horizontalSpeed = 0;
