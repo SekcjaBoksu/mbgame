@@ -51,6 +51,7 @@ let logoImage = null;
 let gameProgress = 0; // Postęp w grze (odległość przebyta)
 let scrollOffset = 0; // Offset scrollowania planszy
 const groundHeight = 80; // Wysokość podłoża
+let isJetpackActive = false; // Czy jetpack jest aktywny
 
 // Załaduj logo
 const logoImg = new Image();
@@ -67,14 +68,29 @@ class Player {
         this.x = canvas.width * 0.15; // Stała pozycja X (po lewej stronie)
         this.y = canvas.height / 2;
         this.velocityY = 0;
-        this.gravity = 0.4;
-        this.boostPower = -9;
+        this.gravity = 0.25; // Lżejsza grawitacja dla płynniejszego ruchu
+        this.jetpackPower = -0.6; // Siła jetpacka (ujemna = w górę) - silniejsza
+        this.maxUpwardSpeed = -7; // Maksymalna prędkość w górę
+        this.maxDownwardSpeed = 5; // Maksymalna prędkość w dół
         this.rotation = 0;
     }
     
     update() {
-        // Tylko grawitacja - postać opada
-        this.velocityY += this.gravity;
+        // Jetpack - płynne unoszenie się w górę
+        if (isJetpackActive) {
+            this.velocityY += this.jetpackPower;
+            // Ograniczenie maksymalnej prędkości w górę
+            if (this.velocityY < this.maxUpwardSpeed) {
+                this.velocityY = this.maxUpwardSpeed;
+            }
+        } else {
+            // Grawitacja - powolne opadanie
+            this.velocityY += this.gravity;
+            // Ograniczenie maksymalnej prędkości w dół
+            if (this.velocityY > this.maxDownwardSpeed) {
+                this.velocityY = this.maxDownwardSpeed;
+            }
+        }
         
         // Aktualizuj pozycję Y
         this.y += this.velocityY;
@@ -91,13 +107,17 @@ class Player {
             return true; // Zwróć true jeśli kolizja z ziemią
         }
         
-        // Rotacja w zależności od prędkości
-        this.rotation = Math.min(Math.max(this.velocityY * 0.1, -0.3), 0.3);
+        // Rotacja w zależności od prędkości (bardziej subtelna)
+        this.rotation = Math.min(Math.max(this.velocityY * 0.08, -0.2), 0.2);
         return false;
     }
     
-    jump() {
-        this.velocityY = this.boostPower;
+    activateJetpack() {
+        isJetpackActive = true;
+    }
+    
+    deactivateJetpack() {
+        isJetpackActive = false;
     }
     
     draw() {
@@ -128,6 +148,39 @@ class Player {
                 logoSize,
                 logoSize
             );
+            ctx.restore();
+        }
+        
+        // Jetpack - płomienie gdy aktywny
+        if (isJetpackActive) {
+            ctx.save();
+            ctx.translate(0, this.height / 2);
+            
+            // Płomienie jetpacka
+            const flameGradient = ctx.createLinearGradient(0, 0, 0, 25);
+            flameGradient.addColorStop(0, 'rgba(255, 200, 0, 0.9)');
+            flameGradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.7)');
+            flameGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+            
+            ctx.fillStyle = flameGradient;
+            ctx.beginPath();
+            // Lewy płomień
+            ctx.moveTo(-this.width / 4, 0);
+            ctx.lineTo(-this.width / 6, 20);
+            ctx.lineTo(-this.width / 8, 25);
+            ctx.lineTo(-this.width / 5, 20);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Prawy płomień
+            ctx.beginPath();
+            ctx.moveTo(this.width / 4, 0);
+            ctx.lineTo(this.width / 6, 20);
+            ctx.lineTo(this.width / 8, 25);
+            ctx.lineTo(this.width / 5, 20);
+            ctx.closePath();
+            ctx.fill();
+            
             ctx.restore();
         }
         
@@ -669,7 +722,7 @@ class Game {
         // Instrukcje
         ctx.fillStyle = '#888';
         ctx.font = 'italic 14px Arial';
-        ctx.fillText('Kliknij ekran, aby wznieść się wyżej', menuX, menuY + 100);
+        ctx.fillText('Przytrzymaj, aby użyć jetpacka', menuX, menuY + 100);
     }
     
     drawGameOverScreen() {
@@ -739,6 +792,7 @@ class Game {
         gameProgress = 0;
         horizontalSpeed = 0;
         scrollOffset = 0;
+        isJetpackActive = false; // Reset jetpacka
         scoreDisplay.textContent = score;
         
         // Utwórz początkowe turbiny - wszystkie podstawy na ziemi, różne długości wież
@@ -751,8 +805,8 @@ class Game {
 // Inicjalizacja gry
 const game = new Game();
 
-// Obsługa zdarzeń
-function handleInput(event) {
+// Obsługa kliknięć (tylko dla menu)
+function handleClick(event) {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -771,9 +825,8 @@ function handleInput(event) {
         if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
             y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
             gameState = 'playing';
+            isJetpackActive = false; // Reset jetpacka przy starcie
         }
-    } else if (gameState === 'playing') {
-        game.player.jump();
     } else if (gameState === 'gameOver') {
         // Sprawdź czy kliknięto w przycisk Restart
         const menuX = canvas.width / 2;
@@ -787,28 +840,84 @@ function handleInput(event) {
             y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
             game.reset();
             gameState = 'playing';
+            isJetpackActive = false;
         }
     }
 }
 
-// Kliknięcie na canvas
-canvas.addEventListener('click', handleInput);
+// Aktywacja jetpacka (przytrzymanie)
+function activateJetpack(event) {
+    if (gameState === 'playing') {
+        if (event) event.preventDefault();
+        isJetpackActive = true;
+    }
+}
+
+// Deaktywacja jetpacka (puszczenie)
+function deactivateJetpack(event) {
+    if (gameState === 'playing') {
+        if (event) event.preventDefault();
+        isJetpackActive = false;
+    }
+}
+
+// Obsługa zdarzeń myszy
+canvas.addEventListener('click', handleClick);
+
+// Mousedown - aktywuj jetpack
+canvas.addEventListener('mousedown', (e) => {
+    if (gameState === 'playing') {
+        e.preventDefault();
+        activateJetpack(e);
+    } else {
+        handleClick(e);
+    }
+});
+
+// Mouseup - deaktywuj jetpack
+canvas.addEventListener('mouseup', (e) => {
+    if (gameState === 'playing') {
+        e.preventDefault();
+        deactivateJetpack(e);
+    }
+});
+
+// Mouseleave - deaktywuj jetpack gdy mysz opuści canvas
+canvas.addEventListener('mouseleave', (e) => {
+    if (gameState === 'playing') {
+        deactivateJetpack(e);
+    }
+});
+
+// Obsługa dotyku
 canvas.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (e.touches.length > 0) {
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const x = (touch.clientX - rect.left) * scaleX;
-        const y = (touch.clientY - rect.top) * scaleY;
-        
-        // Symuluj kliknięcie
-        const fakeEvent = {
-            clientX: touch.clientX,
-            clientY: touch.clientY
-        };
-        handleInput(fakeEvent);
+    if (gameState === 'start' || gameState === 'gameOver') {
+        // Dla menu - symuluj kliknięcie
+        if (e.touches.length > 0) {
+            const touch = e.touches[0];
+            const fakeEvent = {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            };
+            handleClick(fakeEvent);
+        }
+    } else if (gameState === 'playing') {
+        activateJetpack(e);
+    }
+});
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (gameState === 'playing') {
+        deactivateJetpack(e);
+    }
+});
+
+canvas.addEventListener('touchcancel', (e) => {
+    e.preventDefault();
+    if (gameState === 'playing') {
+        deactivateJetpack(e);
     }
 });
 
