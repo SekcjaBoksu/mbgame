@@ -212,12 +212,12 @@ class Player {
 class WindTurbine {
     constructor(worldX, towerHeight) {
         this.worldX = worldX; // Pozycja w świecie (scrolluje się)
-        this.towerHeight = towerHeight; // Długość wieży (różna dla każdej turbiny)
+        this.towerHeight = towerHeight; // Wysokość wieży (różna dla każdej turbiny)
         this.towerWidth = 15;
         this.bladeLength = 60;
         this.bladeAngle = 0;
         this.bladeSpeed = -0.03; // Odwrócony kierunek obrotu (wiatr wieje od lewej)
-        this.windLineLength = canvas.width * 0.6; // Długa linia wiatru od lewej do prawej
+        this.windLineLength = canvas.width * 0.8; // Długa linia wiatru od lewej do prawej
     }
     
     getScreenX() {
@@ -225,12 +225,12 @@ class WindTurbine {
     }
     
     getBaseY() {
-        // Podstawa zawsze na ziemi
+        // Podstawa ZAWSZE na ziemi
         return canvas.height - groundHeight;
     }
     
     getGondolaY() {
-        // Gondola na szczycie wieży
+        // Gondola na szczycie wieży (wyrasta z ziemi)
         return this.getBaseY() - this.towerHeight;
     }
     
@@ -294,39 +294,45 @@ class WindTurbine {
         
         ctx.restore();
         
-        // Linia wiatru (od lewej do prawej - wiatr napędza gracza)
+        // Linia wiatru (OD LEWEJ DO PRAWEJ - wiatr napędza gracza)
         const playerX = canvas.width * 0.15;
         
-        // Wiatr wieje od lewej strony wiatraka w stronę gracza
+        // Gradient wiatru: od lewej strony ekranu (startX) przez wiatrak (screenX) do gracza (endX)
+        // Wiatr wieje OD LEWEJ DO PRAWEJ
         if (screenX > playerX) {
+            // Start gradientu - daleko po lewej stronie wiatraka
             const startX = Math.max(0, screenX - this.windLineLength);
-            const endX = playerX;
+            // Koniec gradientu - przy graczu lub wiatraku
+            const endX = Math.min(playerX + 30, screenX);
             
             if (endX > startX) {
+                // Gradient od lewej (silniejszy, bardziej widoczny) do prawej (słabszy, zanika)
                 const gradient = ctx.createLinearGradient(
                     startX,
                     gondolaY,
                     endX,
                     gondolaY
                 );
-                gradient.addColorStop(0, 'rgba(135, 206, 235, 0.5)');
-                gradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.3)');
-                gradient.addColorStop(1, 'rgba(135, 206, 235, 0)');
+                gradient.addColorStop(0, 'rgba(135, 206, 235, 0.7)'); // Silny na początku (lewa)
+                gradient.addColorStop(0.2, 'rgba(135, 206, 235, 0.6)');
+                gradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.4)');
+                gradient.addColorStop(0.8, 'rgba(135, 206, 235, 0.2)');
+                gradient.addColorStop(1, 'rgba(135, 206, 235, 0)'); // Zanika na końcu (prawa)
                 
                 ctx.fillStyle = gradient;
                 ctx.fillRect(
                     startX,
-                    gondolaY - 40,
+                    gondolaY - 50,
                     endX - startX,
-                    80
+                    100
                 );
                 
                 // Cząsteczki wiatru (poruszają się od lewej do prawej)
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                for (let i = 0; i < 10; i++) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                for (let i = 0; i < 15; i++) {
                     const progress = Math.random();
                     const offsetX = startX + (endX - startX) * progress;
-                    const offsetY = gondolaY + (Math.random() - 0.5) * 50;
+                    const offsetY = gondolaY + (Math.random() - 0.5) * 60;
                     const size = Math.random() * 2 + 1;
                     ctx.beginPath();
                     ctx.arc(offsetX, offsetY, size, 0, Math.PI * 2);
@@ -336,17 +342,35 @@ class WindTurbine {
         }
     }
     
-    getWindForce() {
+    getWindForce(playerY) {
         // Turbina generuje siłę wiatru napędzającą gracza w prawo
         const playerX = canvas.width * 0.15;
         const screenX = this.getScreenX();
-        const distance = Math.abs(screenX - playerX);
+        const gondolaY = this.getGondolaY();
         
-        // Siła wiatru zależy od odległości - im bliżej, tym silniejszy wiatr
-        if (distance < this.windLineLength && screenX > playerX) {
-            return 0.4 + (1 - distance / this.windLineLength) * 0.3; // 0.4-0.7
+        // Sprawdź czy gracz jest w obszarze wiatru (poziomo i pionowo)
+        const horizontalDistance = Math.abs(screenX - playerX);
+        const verticalDistance = Math.abs(gondolaY - playerY);
+        
+        // Sprawdź czy gracz jest w prądzie powietrznym
+        const inWindStream = horizontalDistance < this.windLineLength && 
+                            screenX > playerX &&
+                            verticalDistance < 60; // Wysokość prądu powietrznego
+        
+        if (inWindStream) {
+            // ZNACZNE przyspieszenie gdy gracz jest w prądzie powietrznym
+            const distanceFactor = 1 - (horizontalDistance / this.windLineLength);
+            const verticalFactor = 1 - (verticalDistance / 60);
+            // Maksymalne przyspieszenie: 2.0x (gdy bardzo blisko wiatraka)
+            return 0.8 + (distanceFactor * verticalFactor * 1.2); // 0.8-2.0
         }
-        return 0;
+        
+        // Podstawowa siła wiatru (słabsza, gdy poza prądem)
+        if (horizontalDistance < this.windLineLength * 1.5 && screenX > playerX) {
+            return 0.3 + (1 - horizontalDistance / (this.windLineLength * 1.5)) * 0.2; // 0.3-0.5
+        }
+        
+        return 0.2; // Minimalna prędkość
     }
     
     isOffScreen() {
@@ -515,10 +539,10 @@ class Game {
         this.obstacleInterval = 2000; // Co 2 sekundy nowa przeszkoda (w milisekundach)
         scrollOffset = 0;
         
-        // Utwórz początkowe turbiny na różnych wysokościach podstawy
-        this.turbines.push(new WindTurbine(300, 80));
-        this.turbines.push(new WindTurbine(600, 150));
-        this.turbines.push(new WindTurbine(900, 100));
+        // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
+        this.turbines.push(new WindTurbine(300, 120));  // Krótka wieża
+        this.turbines.push(new WindTurbine(600, 220)); // Średnia wieża
+        this.turbines.push(new WindTurbine(900, 180));  // Długa wieża
     }
     
     update() {
@@ -528,10 +552,13 @@ class Game {
         
         // Oblicz prędkość poziomą na podstawie siły wiatru
         let windForce = 0;
+        const playerY = this.player.y;
+        
         this.turbines.forEach(turbine => {
-            windForce += turbine.getWindForce();
+            windForce += turbine.getWindForce(playerY);
         });
-        horizontalSpeed = Math.max(0.5, windForce); // Minimalna prędkość
+        
+        horizontalSpeed = Math.max(0.3, windForce); // Minimalna prędkość
         gameProgress += horizontalSpeed;
         
         // Scrollowanie planszy (świat przesuwa się w lewo)
@@ -554,8 +581,9 @@ class Game {
             : scrollOffset;
         
         if (lastTurbineX - scrollOffset < canvas.width + 300) {
-            // Różne długości wież (wszystkie podstawy na ziemi)
-            const towerHeight = 100 + Math.random() * 120; // Od 100 do 220 pikseli
+            // Różne wysokości wieży (podstawy zawsze na ziemi)
+            // Wieże od 100 do 300 pikseli wysokości (różne wysokości gondoli)
+            const towerHeight = 100 + Math.random() * 200; // Od 100 do 300 pikseli
             const newX = Math.max(lastTurbineX + 400, scrollOffset + canvas.width + 200);
             this.turbines.push(new WindTurbine(newX, towerHeight));
         }
@@ -868,10 +896,10 @@ class Game {
         isJetpackActive = false; // Reset jetpacka
         // Punkty są renderowane na canvasie, nie w HTML
         
-        // Utwórz początkowe turbiny - wszystkie podstawy na ziemi, różne długości wież
+        // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
         this.turbines.push(new WindTurbine(300, 120));  // Krótka wieża
-        this.turbines.push(new WindTurbine(600, 180)); // Średnia wieża
-        this.turbines.push(new WindTurbine(900, 150));  // Długa wieża
+        this.turbines.push(new WindTurbine(600, 220)); // Średnia wieża
+        this.turbines.push(new WindTurbine(900, 180));  // Długa wieża
     }
 }
 
