@@ -773,6 +773,29 @@ class Game {
             });
         }
         
+        // Góry w tle (wiele warstw - bliższe i dalsze)
+        this.mountains = [];
+        // Dalsze góry (wolniejszy parallax)
+        for (let i = 0; i < 12; i++) {
+            this.mountains.push({
+                worldX: i * 250, // Pozycja w świecie
+                height: Math.random() * (canvas.height - groundHeight) * 0.3 + (canvas.height - groundHeight) * 0.15, // Wysokość 15-45% ekranu
+                width: Math.random() * 180 + 120, // Szerokość 120-300px
+                parallaxSpeed: 0.2, // Wolniejszy parallax (dalsze)
+                layer: 'far' // Warstwa dalsza
+            });
+        }
+        // Bliższe góry (szybszy parallax)
+        for (let i = 0; i < 10; i++) {
+            this.mountains.push({
+                worldX: i * 300, // Pozycja w świecie
+                height: Math.random() * (canvas.height - groundHeight) * 0.5 + (canvas.height - groundHeight) * 0.25, // Wysokość 25-75% ekranu
+                width: Math.random() * 220 + 160, // Szerokość 160-380px
+                parallaxSpeed: 0.4, // Szybszy parallax (bliższe)
+                layer: 'near' // Warstwa bliższa
+            });
+        }
+        
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
         const availableHeight = canvas.height - groundHeight;
         this.turbines.push(new WindTurbine(300, 100));  // Krótka wieża
@@ -836,6 +859,47 @@ class Game {
             }
         });
         
+        // Dodaj nowe góry w miarę scrollowania (parallax) - różne warstwy
+        // Dalsze góry
+        const farMountains = this.mountains.filter(m => m.layer === 'far');
+        const lastFarMountainX = farMountains.length > 0
+            ? Math.max(...farMountains.map(m => m.worldX))
+            : scrollOffset;
+        
+        if (lastFarMountainX - scrollOffset * 0.2 < canvas.width + 400) {
+            const newX = Math.max(lastFarMountainX + 250, scrollOffset * 0.2 + canvas.width + 200);
+            this.mountains.push({
+                worldX: newX,
+                height: Math.random() * (canvas.height - groundHeight) * 0.3 + (canvas.height - groundHeight) * 0.15,
+                width: Math.random() * 180 + 120,
+                parallaxSpeed: 0.2,
+                layer: 'far'
+            });
+        }
+        
+        // Bliższe góry
+        const nearMountains = this.mountains.filter(m => m.layer === 'near');
+        const lastNearMountainX = nearMountains.length > 0
+            ? Math.max(...nearMountains.map(m => m.worldX))
+            : scrollOffset;
+        
+        if (lastNearMountainX - scrollOffset * 0.4 < canvas.width + 400) {
+            const newX = Math.max(lastNearMountainX + 300, scrollOffset * 0.4 + canvas.width + 200);
+            this.mountains.push({
+                worldX: newX,
+                height: Math.random() * (canvas.height - groundHeight) * 0.5 + (canvas.height - groundHeight) * 0.25,
+                width: Math.random() * 220 + 160,
+                parallaxSpeed: 0.4,
+                layer: 'near'
+            });
+        }
+        
+        // Usuń góry, które są daleko poza ekranem (różne dla różnych warstw)
+        this.mountains = this.mountains.filter(mountain => {
+            const screenX = mountain.worldX - scrollOffset * mountain.parallaxSpeed;
+            return screenX + mountain.width > -200; // Zostaw margines
+        });
+        
         // Dodaj nowe turbiny w miarę scrollowania
         const lastTurbineX = this.turbines.length > 0
             ? Math.max(...this.turbines.map(t => t.worldX))
@@ -890,6 +954,73 @@ class Game {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
+        // Góry w tle (scrollują się wolniej - parallax, różne warstwy)
+        // Najpierw rysuj dalsze góry (za bliższymi)
+        const farMountains = this.mountains.filter(m => m.layer === 'far');
+        const nearMountains = this.mountains.filter(m => m.layer === 'near');
+        
+        // Rysuj dalsze góry
+        farMountains.forEach(mountain => {
+            const screenX = mountain.worldX - scrollOffset * mountain.parallaxSpeed;
+            const groundY = canvas.height - groundHeight;
+            const baseY = groundY;
+            const peakY = baseY - mountain.height;
+            
+            // Sprawdź czy góra jest widoczna
+            if (screenX + mountain.width < 0 || screenX > canvas.width) {
+                return; // Poza ekranem
+            }
+            
+            // Ciemna część góry (noc) - ciemniejsza dla dalszych
+            ctx.fillStyle = '#151520'; // Ciemniejszy dla dalszych
+            ctx.beginPath();
+            ctx.moveTo(screenX, baseY);
+            ctx.lineTo(screenX + mountain.width / 2, peakY);
+            ctx.lineTo(screenX + mountain.width, baseY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Delikatne cienie dla głębi
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.beginPath();
+            ctx.moveTo(screenX + mountain.width * 0.6, baseY);
+            ctx.lineTo(screenX + mountain.width / 2, peakY);
+            ctx.lineTo(screenX + mountain.width, baseY);
+            ctx.closePath();
+            ctx.fill();
+        });
+        
+        // Rysuj bliższe góry (na wierzchu)
+        nearMountains.forEach(mountain => {
+            const screenX = mountain.worldX - scrollOffset * mountain.parallaxSpeed;
+            const groundY = canvas.height - groundHeight;
+            const baseY = groundY;
+            const peakY = baseY - mountain.height;
+            
+            // Sprawdź czy góra jest widoczna
+            if (screenX + mountain.width < 0 || screenX > canvas.width) {
+                return; // Poza ekranem
+            }
+            
+            // Ciemna część góry (noc) - jaśniejsza dla bliższych
+            ctx.fillStyle = '#1a1a2e'; // Jaśniejszy dla bliższych
+            ctx.beginPath();
+            ctx.moveTo(screenX, baseY);
+            ctx.lineTo(screenX + mountain.width / 2, peakY);
+            ctx.lineTo(screenX + mountain.width, baseY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Delikatne cienie dla głębi
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+            ctx.beginPath();
+            ctx.moveTo(screenX + mountain.width * 0.6, baseY);
+            ctx.lineTo(screenX + mountain.width / 2, peakY);
+            ctx.lineTo(screenX + mountain.width, baseY);
+            ctx.closePath();
+            ctx.fill();
+        });
+        
         // Gwiazdki świecące na niebie (świąteczne)
         this.stars.forEach(star => {
             // Animacja migania gwiazdek
@@ -916,26 +1047,76 @@ class Game {
             ctx.fill();
         });
         
-        // Rysuj podłoże (śnieg)
+        // Rysuj podłoże (śnieg z teksturą)
         const groundY = canvas.height - groundHeight;
         
-        // Główna część śniegu (biała z lekkim gradientem)
+        // Główna część śniegu (biała z lekkim gradientem i jasnoniebieskimi akcentami)
         const snowGradient = ctx.createLinearGradient(0, groundY, 0, canvas.height);
         snowGradient.addColorStop(0, '#FFFFFF'); // Biały śnieg na górze
-        snowGradient.addColorStop(0.5, '#F0F0F0'); // Lekko szary w środku
-        snowGradient.addColorStop(1, '#E0E0E0'); // Bardziej szary na dole
+        snowGradient.addColorStop(0.3, '#F5F5FF'); // Lekko niebieskawy
+        snowGradient.addColorStop(0.6, '#E8E8FF'); // Bardziej niebieskawy
+        snowGradient.addColorStop(1, '#E0E0F0'); // Szaroniebieski na dole
         ctx.fillStyle = snowGradient;
         ctx.fillRect(0, groundY, canvas.width, groundHeight);
         
-        // Efekt śniegu (płatki śniegu) - scrolluje się w lewo
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        for (let i = 0; i < 30; i++) {
-            const x = ((-scrollOffset * 0.3) + i * 40) % canvas.width;
-            const y = groundY + 5 + Math.sin(i * 0.5) * 3;
+        // Tekstura śniegu - pattern z różnymi kształtami i kolorami
+        // Białe płatki śniegu (różne rozmiary)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        for (let i = 0; i < 40; i++) {
+            const x = ((-scrollOffset * 0.2) + i * 30) % canvas.width;
+            const y = groundY + 10 + (i % 8) * 8 + Math.sin(i * 0.3) * 4;
             const finalX = x < 0 ? x + canvas.width : x;
-            // Małe płatki śniegu
+            const size = Math.random() * 2 + 1;
             ctx.beginPath();
-            ctx.arc(finalX, y, 1.5, 0, Math.PI * 2);
+            ctx.arc(finalX, y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Jasnoniebieskie akcenty (kryształki lodu)
+        ctx.fillStyle = 'rgba(200, 220, 255, 0.6)';
+        for (let i = 0; i < 25; i++) {
+            const x = ((-scrollOffset * 0.15) + i * 50) % canvas.width;
+            const y = groundY + 15 + (i % 6) * 10 + Math.cos(i * 0.4) * 5;
+            const finalX = x < 0 ? x + canvas.width : x;
+            const size = Math.random() * 1.5 + 0.5;
+            // Małe kryształki (kwadraty/rombiki)
+            ctx.fillRect(finalX - size, y - size, size * 2, size * 2);
+        }
+        
+        // Większe płatki śniegu (gwiazdki)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (let i = 0; i < 15; i++) {
+            const x = ((-scrollOffset * 0.25) + i * 80) % canvas.width;
+            const y = groundY + 20 + (i % 5) * 12;
+            const finalX = x < 0 ? x + canvas.width : x;
+            const size = 2;
+            // Prosta gwiazdka (4 promienie)
+            ctx.save();
+            ctx.translate(finalX, y);
+            ctx.beginPath();
+            for (let j = 0; j < 4; j++) {
+                ctx.rotate(Math.PI / 2);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(0, -size * 2);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(-size, -size);
+                ctx.moveTo(0, 0);
+                ctx.lineTo(size, -size);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
+        }
+        
+        // Delikatne cienie/ciemniejsze obszary (dla głębi)
+        ctx.fillStyle = 'rgba(200, 200, 220, 0.2)';
+        for (let i = 0; i < 20; i++) {
+            const x = ((-scrollOffset * 0.1) + i * 60) % canvas.width;
+            const y = groundY + 5 + (i % 7) * 9;
+            const finalX = x < 0 ? x + canvas.width : x;
+            ctx.beginPath();
+            ctx.arc(finalX, y, 3 + Math.random() * 2, 0, Math.PI * 2);
             ctx.fill();
         }
         
@@ -1261,6 +1442,29 @@ class Game {
                 size: Math.random() * 2 + 1,
                 brightness: Math.random() * 0.5 + 0.5,
                 twinkleSpeed: Math.random() * 0.005 + 0.003 // Wolniejsza szybkość migania
+            });
+        }
+        
+        // Reset gór w tle (wiele warstw - bliższe i dalsze)
+        this.mountains = [];
+        // Dalsze góry (wolniejszy parallax)
+        for (let i = 0; i < 12; i++) {
+            this.mountains.push({
+                worldX: i * 250,
+                height: Math.random() * (canvas.height - groundHeight) * 0.3 + (canvas.height - groundHeight) * 0.15,
+                width: Math.random() * 180 + 120,
+                parallaxSpeed: 0.2,
+                layer: 'far'
+            });
+        }
+        // Bliższe góry (szybszy parallax)
+        for (let i = 0; i < 10; i++) {
+            this.mountains.push({
+                worldX: i * 300,
+                height: Math.random() * (canvas.height - groundHeight) * 0.5 + (canvas.height - groundHeight) * 0.25,
+                width: Math.random() * 220 + 160,
+                parallaxSpeed: 0.4,
+                layer: 'near'
             });
         }
         
