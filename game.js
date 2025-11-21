@@ -1370,7 +1370,7 @@ class Game {
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Prędkość', barX, barY);
+        ctx.fillText('Geschwindigkeit', barX, barY);
     }
     
     drawStartMenu() {
@@ -1407,7 +1407,7 @@ class Game {
         // Podtytuł
         ctx.fillStyle = '#4A90E2';
         ctx.font = 'italic 18px Arial';
-        ctx.fillText('Użyj siły wiatru, aby lecieć!', menuX, menuY - 30);
+        ctx.fillText('Nutze die Windkraft zum Fliegen!', menuX, menuY - 30);
         
         // Przycisk Start (prostokąt z zaokrąglonymi rogami)
         const buttonY = menuY + 20;
@@ -1436,7 +1436,7 @@ class Game {
         // Instrukcje
         ctx.fillStyle = '#888';
         ctx.font = 'italic 14px Arial';
-        ctx.fillText('Przytrzymaj, aby napełnić balon', menuX, menuY + 100);
+        ctx.fillText('Halten, um den Ballon zu füllen', menuX, menuY + 100);
     }
     
     drawGameOverScreen() {
@@ -1472,7 +1472,7 @@ class Game {
         // Wynik
         ctx.fillStyle = '#555';
         ctx.font = '22px Arial';
-        ctx.fillText(`Twój wynik: ${score}`, menuX, menuY - 20);
+        ctx.fillText(`Dein Ergebnis: ${score}`, menuX, menuY - 20);
         
         // Przycisk Restart
         const buttonY = menuY + 50;
@@ -1534,13 +1534,13 @@ class Game {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.shadowColor = 'transparent';
-        ctx.fillText('Sukces!', menuX, menuY - 70);
+        ctx.fillText('Erfolg!', menuX, menuY - 70);
         
         // Czas ukończenia
         const finishTime = MAX_TIME - gameTime;
         ctx.fillStyle = '#555';
         ctx.font = '22px Arial';
-        ctx.fillText(`Czas: ${finishTime.toFixed(1)}s`, menuX, menuY - 20);
+        ctx.fillText(`Zeit: ${finishTime.toFixed(1)}s`, menuX, menuY - 20);
         
         // Przycisk Restart
         const buttonY = menuY + 50;
