@@ -326,7 +326,7 @@ class WindTurbine {
         this.towerHeight = towerHeight; // Wysokość wieży (różna dla każdej turbiny)
         this.towerWidth = 15; // Szerokość u góry (gondola)
         this.towerBaseWidth = 20; // Szerokość u podstawy (szersza)
-        this.bladeLength = 80; // Dłuższe łopaty
+        this.bladeLength = 100; // Dłuższe łopaty (zwiększone z 80)
         this.bladeAngle = 0;
         this.bladeSpeed = -0.03; // Obroty w lewo (przeciwnie do wskazówek) - wiatr wieje w prawo (w plecy gracza)
         this.windLineLength = canvas.width * 2.0; // Długa linia wiatru od wiatraka w prawo (dla mechaniki boostu)
@@ -476,36 +476,8 @@ class WindTurbine {
             redBandHeight
         );
         
-        // Gondola (głowica) - jasnoszara/srebrna
-        ctx.fillStyle = '#C0C0C0'; // Srebrny/jasnoszary
-        ctx.beginPath();
-        ctx.ellipse(
-            screenX,
-            gondolaY,
-            this.towerWidth * 1.5,
-            this.towerWidth,
-            0,
-            0,
-            Math.PI * 2
-        );
-        ctx.fill();
-        
-        // Obramowanie gondoli dla głębi
-        ctx.strokeStyle = '#A0A0A0';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.ellipse(
-            screenX,
-            gondolaY,
-            this.towerWidth * 1.5,
-            this.towerWidth,
-            0,
-            0,
-            Math.PI * 2
-        );
-        ctx.stroke();
-        
         // Łopaty (białe z czerwonymi końcówkami i pasem) - realistyczny kształt
+        // Rysuj PRZED gondolą, żeby były na wierzchu
         ctx.save();
         ctx.translate(screenX, gondolaY);
         
@@ -514,8 +486,9 @@ class WindTurbine {
             ctx.rotate(this.bladeAngle + (i * Math.PI * 2 / 3));
             
             // Kształt łopaty - szersza przy gondoli, zwęża się do końca
-            const bladeStartWidth = 8; // Szerokość przy gondoli
-            const bladeEndWidth = 2; // Szerokość na końcu
+            const bladeStartWidth = 10; // Szerokość przy gondoli (zwiększona z 8)
+            const bladeEndWidth = 4; // Szerokość na końcu (zwiększona z 3, żeby nie było jak szpikulec)
+            const bladeTipWidth = 2; // Szerokość samej końcówki (nie 0, żeby nie było jak szpikulec)
             const redTipStart = this.bladeLength * 0.8; // Czerwona końcówka zaczyna się od 80%
             const redBandStart = this.bladeLength * 0.75; // Czerwony pas zaczyna się od 75%
             const redBandEnd = this.bladeLength * 0.85; // Czerwony pas kończy się na 85%
@@ -542,11 +515,12 @@ class WindTurbine {
             ctx.closePath();
             ctx.fill();
             
-            // Czerwona końcówka łopaty
+            // Czerwona końcówka łopaty - z widoczną szerokością (nie jak szpikulec)
             ctx.fillStyle = '#DC143C';
             ctx.beginPath();
             ctx.moveTo(-bladeEndWidth / 2, -redTipStart);
-            ctx.lineTo(0, -this.bladeLength); // Ostrze końcówki
+            ctx.lineTo(-bladeTipWidth / 2, -this.bladeLength); // Lewy punkt końcówki (nie 0)
+            ctx.lineTo(bladeTipWidth / 2, -this.bladeLength); // Prawy punkt końcówki (nie 0)
             ctx.lineTo(bladeEndWidth / 2, -redTipStart);
             ctx.closePath();
             ctx.fill();
@@ -555,6 +529,21 @@ class WindTurbine {
         }
         
         ctx.restore();
+        
+        // Gondola (głowica) - jasnoszara/srebrna - rysowana PO śmigłach (w tle)
+        // Okrągła gondola (nie elipsa) - delikatnie mniejsza
+        const gondolaRadius = this.towerWidth * 1.0; // Okrągła, delikatnie mniejsza
+        ctx.fillStyle = '#C0C0C0'; // Srebrny/jasnoszary
+        ctx.beginPath();
+        ctx.arc(screenX, gondolaY, gondolaRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Obramowanie gondoli dla głębi
+        ctx.strokeStyle = '#A0A0A0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(screenX, gondolaY, gondolaRadius, 0, Math.PI * 2);
+        ctx.stroke();
     }
     
     getWindForce(playerY) {
