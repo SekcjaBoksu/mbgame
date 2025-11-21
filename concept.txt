@@ -12,12 +12,17 @@ GŁÓWNA MECHANIKA:
 2. SIŁA WIATRU - ZAKTUALIZOWANE:
    - Wiatraki generują siłę wiatru, która przesuwa postać w prawo
    - Wizualna "linia wiatru" (gradient) pokazuje przepływ powietrza
-   - **WAŻNE: Gradient wiatru idzie OD LEWEJ DO PRAWEJ** (nie od prawej do lewej)
-   - **WAŻNE: Wiatraki pojawiają się na RÓŻNYCH WYSOKOŚCIACH na całej wysokości ekranu**
-     (nie tylko na dole przy ziemi)
+   - **WAŻNE: Gradient wiatru zaczyna się PRZY WIATRAKU i idzie W PRAWO (w plecy gracza)**
+     - Wiatr wieje w plecy gracza, więc gradient pokazuje wiatr od wiatraka w prawo
+     - Gradient jest silniejszy przy wiatraku i zanika w prawo
+   - **WAŻNE: Wiatraki wyrastają z ziemi, różne wysokości wież**
+     - Podstawy wiatraków ZAWSZE na ziemi
+     - Zmienia się tylko wysokość wieży (różne wysokości gondoli)
    - **WAŻNE: Przebywanie w prądzie powietrznym ZNACZNIE PRZYSPIESZA prędkość przesuwania w prawo**
      - Gdy gracz jest w obszarze wiatru, prędkość pozioma jest znacznie większa
      - Im bliżej źródła wiatru (wiatraka), tym silniejszy efekt
+   - **WAŻNE: Kierunek obrotu łopat**
+     - Łopaty obracają się tak, aby wizualnie pokazywać wiatr wiejący w prawo (w plecy gracza)
    - Im więcej wiatru, tym szybciej postać porusza się w prawo
 
 3. PRZESZKODY:
