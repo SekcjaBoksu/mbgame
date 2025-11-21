@@ -217,7 +217,7 @@ class WindTurbine {
         this.bladeLength = 60;
         this.bladeAngle = 0;
         this.bladeSpeed = -0.03; // Obroty w lewo (przeciwnie do wskazówek) - wiatr wieje w prawo (w plecy gracza)
-        this.windLineLength = canvas.width * 0.8; // Długa linia wiatru od wiatraka w prawo
+        this.windLineLength = canvas.width * 2.0; // Bardzo długa linia wiatru od wiatraka w prawo (dłuższa, aby smuga była widoczna znacznie dłużej)
     }
     
     getScreenX() {
@@ -243,9 +243,82 @@ class WindTurbine {
         const baseY = this.getBaseY();
         const gondolaY = this.getGondolaY();
         
+        // NAJPIERW rysuj smugę wiatru - musi być rysowana nawet gdy wiatrak jest poza ekranem
+        // Linia wiatru (OD WIATRAKA W PRAWO - wiatr wieje w plecy gracza)
+        const playerX = canvas.width * 0.15;
+        
+        // Gradient wiatru: ZACZYNA SIĘ PRZY WIATRAKU i idzie W PRAWO (na całej długości)
+        // Wiatr wieje w plecy gracza, więc gradient pokazuje wiatr od wiatraka w prawo
+        // Rysuj gradient nawet gdy wiatrak jest poza ekranem (po lewej stronie)
+        // Sprawdź czy smuga wiatru przecina się z ekranem
+        const windStartX = screenX; // Pozycja wiatraka (może być poza ekranem)
+        const windEndX = screenX + this.windLineLength; // Koniec smugi wiatru
+        
+        // Rysuj gradient jeśli smuga wiatru przecina się z ekranem
+        // Smuga jest widoczna, dopóki jakakolwiek jej część jest na ekranie
+        // (windEndX > 0 oznacza, że koniec smugi jest jeszcze po prawej stronie ekranu)
+        if (windEndX > 0) {
+            // Start gradientu - PRZY WIATRAKU (gondola) - tu wiatr jest najsilniejszy
+            // Jeśli wiatrak jest poza ekranem po lewej, zacznij od 0
+            const startX = Math.max(0, windStartX);
+            // Koniec gradientu - w prawo od wiatraka (do końca ekranu lub do końca smugi)
+            const endX = Math.min(windEndX, canvas.width);
+            
+            // Rysuj tylko jeśli gradient ma sens (endX > startX) i jest widoczny
+            if (endX > startX) {
+                // Gradient od wiatraka (silniejszy) w prawo (słabszy, zanika)
+                // Wizualnie pokazuje wiatr wiejący w plecy gracza (w prawo)
+                // Oblicz pozycję względną wiatraka w widocznej części smugi
+                const visibleWindStart = Math.max(0, windStartX);
+                const visibleWindEnd = Math.min(windEndX, canvas.width);
+                const visibleWindLength = visibleWindEnd - visibleWindStart;
+                const windProgressAtStart = (visibleWindStart - windStartX) / this.windLineLength;
+                
+                const gradient = ctx.createLinearGradient(
+                    startX,
+                    gondolaY,
+                    endX,
+                    gondolaY
+                );
+                // Gradient musi uwzględniać, że wiatrak może być poza ekranem
+                const startOpacity = Math.max(0, 1.0 - windProgressAtStart);
+                gradient.addColorStop(0, `rgba(135, 206, 235, ${startOpacity})`); // Silny przy wiatraku (lub na początku widocznej części)
+                gradient.addColorStop(0.15, `rgba(135, 206, 235, ${startOpacity * 0.8})`);
+                gradient.addColorStop(0.3, `rgba(135, 206, 235, ${startOpacity * 0.6})`);
+                gradient.addColorStop(0.5, `rgba(135, 206, 235, ${startOpacity * 0.4})`);
+                gradient.addColorStop(0.7, `rgba(135, 206, 235, ${startOpacity * 0.25})`);
+                gradient.addColorStop(0.85, `rgba(135, 206, 235, ${startOpacity * 0.1})`);
+                gradient.addColorStop(1, 'rgba(135, 206, 235, 0)'); // Zanika w prawo
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(
+                    Math.max(0, startX), // Nie rysuj poza ekranem
+                    gondolaY - 60,
+                    endX - Math.max(0, startX),
+                    120
+                );
+                
+                // Cząsteczki wiatru (poruszają się od wiatraka w prawo - w plecy gracza)
+                ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+                for (let i = 0; i < 30; i++) {
+                    const progress = Math.random();
+                    const offsetX = startX + (endX - startX) * progress;
+                    // Rysuj tylko cząsteczki na ekranie
+                    if (offsetX >= 0 && offsetX <= canvas.width) {
+                        const offsetY = gondolaY + (Math.random() - 0.5) * 70;
+                        const size = Math.random() * 2.5 + 1;
+                        ctx.beginPath();
+                        ctx.arc(offsetX, offsetY, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+        
+        // TERAZ rysuj wiatrak - tylko gdy jest na ekranie
         // Sprawdź czy wiatrak jest na ekranie
         if (screenX < -50 || screenX > canvas.width + 50) {
-            return; // Nie rysuj jeśli poza ekranem
+            return; // Nie rysuj wiatraka jeśli poza ekranem (ale smuga już została narysowana)
         }
         
         // Sprawdź czy gondola nie jest za wysoko (poza ekranem)
@@ -293,62 +366,6 @@ class WindTurbine {
         }
         
         ctx.restore();
-        
-        // Linia wiatru (OD WIATRAKA W PRAWO - wiatr wieje w plecy gracza)
-        const playerX = canvas.width * 0.15;
-        
-        // Gradient wiatru: ZACZYNA SIĘ PRZY WIATRAKU i idzie W PRAWO (na całej długości)
-        // Wiatr wieje w plecy gracza, więc gradient pokazuje wiatr od wiatraka w prawo
-        // Rysuj gradient gdy wiatrak jest na ekranie lub tuż za ekranem
-        if (screenX > -100 && screenX < canvas.width + 100) {
-            // Start gradientu - PRZY WIATRAKU (gondola) - tu wiatr jest najsilniejszy
-            const startX = Math.max(0, screenX); // Nie zaczynaj przed ekranem
-            // Koniec gradientu - w prawo od wiatraka (do końca ekranu lub dalej)
-            // Gradient idzie od wiatraka w prawo na całej długości
-            const endX = Math.min(startX + this.windLineLength, canvas.width);
-            
-            // Rysuj tylko jeśli gradient ma sens (endX > startX) i jest widoczny
-            if (endX > startX && startX < canvas.width) {
-                // Gradient od wiatraka (silniejszy) w prawo (słabszy, zanika)
-                // Wizualnie pokazuje wiatr wiejący w plecy gracza (w prawo)
-                const gradient = ctx.createLinearGradient(
-                    startX,
-                    gondolaY,
-                    endX,
-                    gondolaY
-                );
-                gradient.addColorStop(0, 'rgba(135, 206, 235, 1.0)'); // Bardzo silny przy wiatraku
-                gradient.addColorStop(0.15, 'rgba(135, 206, 235, 0.8)');
-                gradient.addColorStop(0.3, 'rgba(135, 206, 235, 0.6)');
-                gradient.addColorStop(0.5, 'rgba(135, 206, 235, 0.4)');
-                gradient.addColorStop(0.7, 'rgba(135, 206, 235, 0.25)');
-                gradient.addColorStop(0.85, 'rgba(135, 206, 235, 0.1)');
-                gradient.addColorStop(1, 'rgba(135, 206, 235, 0)'); // Zanika w prawo
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(
-                    Math.max(0, startX), // Nie rysuj poza ekranem
-                    gondolaY - 60,
-                    endX - Math.max(0, startX),
-                    120
-                );
-                
-                // Cząsteczki wiatru (poruszają się od wiatraka w prawo - w plecy gracza)
-                ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-                for (let i = 0; i < 30; i++) {
-                    const progress = Math.random();
-                    const offsetX = startX + (endX - startX) * progress;
-                    // Rysuj tylko cząsteczki na ekranie
-                    if (offsetX >= 0 && offsetX <= canvas.width) {
-                        const offsetY = gondolaY + (Math.random() - 0.5) * 70;
-                        const size = Math.random() * 2.5 + 1;
-                        ctx.beginPath();
-                        ctx.arc(offsetX, offsetY, size, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                }
-            }
-        }
     }
     
     getWindForce(playerY) {
@@ -396,8 +413,13 @@ class WindTurbine {
     }
     
     isOffScreen() {
+        // Wiatrak jest usuwany dopiero gdy smuga wiatru całkowicie zniknie z ekranu
+        // (nie tylko gdy sam wiatrak zniknie, ale gdy cała smuga zniknie)
+        // Dodatkowy margines, aby smuga była widoczna jeszcze dłużej
         const screenX = this.getScreenX();
-        return screenX + 50 < 0;
+        const windEndX = screenX + this.windLineLength; // Koniec smugi wiatru
+        const margin = canvas.width * 0.5; // Dodatkowy margines (50% szerokości ekranu)
+        return windEndX + margin < 0; // Usuń dopiero gdy koniec smugi + margines zniknie z ekranu
     }
 }
 
@@ -581,8 +603,8 @@ class Game {
             windForce += force;
         });
         
-        // Jeśli nie ma wiatru z żadnego wiatraka, użyj minimalnej prędkości (ciut wyższej)
-        horizontalSpeed = windForce > 0 ? windForce : 0.35;
+        // Jeśli nie ma wiatru z żadnego wiatraka, użyj minimalnej prędkości (delikatnie zwiększona)
+        horizontalSpeed = windForce > 0 ? windForce : 0.7;
         gameProgress += horizontalSpeed;
         
         // Scrollowanie planszy (świat przesuwa się w lewo)

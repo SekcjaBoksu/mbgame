@@ -9,20 +9,28 @@ GŁÓWNA MECHANIKA:
    - Pozycja pozioma (X) jest STAŁA - postać jest w jednym miejscu na osi X
    - Prędkość pozioma (przesuwanie w prawo) jest kontrolowana przez SIŁĘ WIATRU z wiatraków
 
-2. SIŁA WIATRU - ZAKTUALIZOWANE:
+2. SIŁA WIATRU - ZAKTUALIZOWANE (SUKCES - SMUGI DZIAŁAJĄ PRAWIDŁOWO):
    - Wiatraki generują siłę wiatru, która przesuwa postać w prawo
    - Wizualna "linia wiatru" (gradient) pokazuje przepływ powietrza
    - **WAŻNE: Gradient wiatru zaczyna się PRZY WIATRAKU i idzie W PRAWO (w plecy gracza)**
      - Wiatr wieje w plecy gracza, więc gradient pokazuje wiatr od wiatraka w prawo
+     - Gradient jest widoczny na CAŁEJ DŁUGOŚCI od wiatraka w prawo (do końca ekranu lub do końca windLineLength)
      - Gradient jest silniejszy przy wiatraku i zanika w prawo
+     - Gradient zawiera białe cząsteczki poruszające się w prawo
    - **WAŻNE: Wiatraki wyrastają z ziemi, różne wysokości wież**
      - Podstawy wiatraków ZAWSZE na ziemi
      - Zmienia się tylko wysokość wieży (różne wysokości gondoli)
+   - **WAŻNE: Boost działa gdy MIJAMY wiatrak (wiatrak po lewej stronie gracza)**
+     - Boost NIE działa gdy wiatrak jest przed nami (po prawej stronie gracza)
+     - Boost działa TYLKO gdy wiatrak jest po lewej stronie gracza (screenX < playerX)
+     - Gdy mijamy wiatrak, wiatr wieje w plecy gracza i przyspiesza nas w prawo
+     - Im bliżej wiatraka (mniejsza odległość), tym silniejszy boost
    - **WAŻNE: Przebywanie w prądzie powietrznym ZNACZNIE PRZYSPIESZA prędkość przesuwania w prawo**
-     - Gdy gracz jest w obszarze wiatru, prędkość pozioma jest znacznie większa
+     - Gdy gracz jest w obszarze wiatru, prędkość pozioma jest znacznie większa (0.8-2.0)
      - Im bliżej źródła wiatru (wiatraka), tym silniejszy efekt
    - **WAŻNE: Kierunek obrotu łopat**
      - Łopaty obracają się tak, aby wizualnie pokazywać wiatr wiejący w prawo (w plecy gracza)
+   - Bazowa prędkość (bez wiatru): 0.35
    - Im więcej wiatru, tym szybciej postać porusza się w prawo
 
 3. PRZESZKODY:
@@ -73,16 +81,23 @@ ZMIANY W STOSUNKU DO POPRZEDNIEJ WERSJI:
 NOWE WYMAGANIA (AKTUALIZACJA):
 ------------------------------
 1. **Gradient wiatru:**
+   - ✅ SUKCES: Gradient jest widoczny na CAŁEJ DŁUGOŚCI od wiatraka w prawo
    - Musi iść OD LEWEJ DO PRAWEJ (nie od prawej do lewej)
    - Wizualnie pokazuje przepływ powietrza w stronę gracza
+   - Zaczyna się przy wiatraku (gondola) i rozciąga się w prawo do końca ekranu lub do końca windLineLength
 
 2. **Pozycjonowanie wiatraków:**
    - Wiatraki pojawiają się na RÓŻNYCH WYSOKOŚCIACH
    - Na CAŁEJ wysokości ekranu (nie tylko przy ziemi)
-   - Podstawy wiatraków mogą być na różnych wysokościach
+   - Podstawy wiatraków ZAWSZE na ziemi (różne wysokości wież)
 
 3. **Mechanika prądu powietrznego:**
-   - Gdy gracz jest w obszarze wiatru (w prądzie powietrznym), prędkość pozioma ZNACZNIE się zwiększa
+   - ✅ SUKCES: Boost działa gdy mijamy wiatrak (wiatrak po lewej stronie gracza)
+   - Boost NIE działa gdy wiatrak jest przed nami (po prawej stronie gracza)
+   - Gdy gracz jest w obszarze wiatru (w prądzie powietrznym), prędkość pozioma ZNACZNIE się zwiększa (0.8-2.0)
    - Im bliżej źródła wiatru, tym silniejszy efekt przyspieszenia
    - To kluczowy element gameplayu - gracz musi manewrować, aby być w prądzie powietrznym
+
+4. **Bazowa prędkość:**
+   - Gdy nie ma wiatru z żadnego wiatraka: 0.35 (ciut wyższa niż wcześniej)
 
