@@ -45,8 +45,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 // Zmienne gry
-let gameState = 'start'; // 'start', 'playing', 'gameOver'
-let score = 0;
+let gameState = 'start'; // 'start', 'playing', 'gameOver', 'victory'
+let score = 0; // Zachowane dla kompatybilności, ale nie używane w UI
 let horizontalSpeed = 0; // Prędkość pozioma kontrolowana przez wiatr
 let logoImage = null;
 let logoBigImage = null; // Większe logo na banery
@@ -58,6 +58,12 @@ let windMomentum = 0; // Momentum wiatru - stopniowo spada po wyjściu ze smugi
 const momentumDecay = 0.985; // Współczynnik spadku momentum (0.985 = spada o 1.5% co frame - spowolnione)
 let introAnimationProgress = 0; // Postęp animacji intro (0-1)
 const introAnimationDuration = 120; // Długość animacji w klatkach (około 2 sekundy przy 60 FPS)
+
+// Nowe zmienne dla ścigania z czasem
+const MAX_TIME = 60; // Maksymalny czas w sekundach
+let gameTime = MAX_TIME; // Pozostały czas
+const FINISH_LINE_DISTANCE = 7000; // Odległość do mety w pikselach (wydłużona)
+let startTime = null; // Czas rozpoczęcia gry (w milisekundach)
 
 // Załaduj logo (małe - na postaci)
 const logoImg = new Image();
@@ -890,7 +896,26 @@ class Game {
             this.turbines.push(new WindTurbine(newX, towerHeight));
         }
         
-        // Zwiększ wynik w zależności od postępu
+        // Aktualizuj timer (odliczanie w dół)
+        if (startTime === null) {
+            startTime = Date.now();
+        }
+        const elapsedTime = (Date.now() - startTime) / 1000; // Czas w sekundach
+        gameTime = Math.max(0, MAX_TIME - elapsedTime);
+        
+        // Sprawdź czy czas się skończył
+        if (gameTime <= 0) {
+            this.gameOver();
+            return;
+        }
+        
+        // Sprawdź czy dotarliśmy do mety
+        if (gameProgress >= FINISH_LINE_DISTANCE) {
+            this.victory();
+            return;
+        }
+        
+        // Zwiększ wynik w zależności od postępu (zachowane dla kompatybilności)
         score = Math.floor(gameProgress / 10);
     }
     
@@ -1156,8 +1181,8 @@ class Game {
                 this.player.x = originalX; // Przywróć oryginalną pozycję
             } else if (gameState === 'playing') {
                 this.player.draw(isInWindStream, horizontalSpeed);
-                // Rysuj punkty na canvasie (tylko podczas gry)
-                this.drawScore();
+                // Rysuj pasek progresu (zamiast punktów)
+                this.drawProgressBar();
                 // Rysuj pasek prędkości
                 this.drawSpeedBar();
             }
@@ -1168,62 +1193,113 @@ class Game {
             this.drawStartMenu();
         }
         
+        // Rysuj ekran Victory (sukces) - przed Game Over
+        if (gameState === 'victory') {
+            this.drawVictoryScreen();
+        }
+        
         // Rysuj ekran Game Over na canvasie (na końcu, żeby był na wierzchu)
         if (gameState === 'gameOver') {
             this.drawGameOverScreen();
         }
     }
     
-    drawScore() {
-        // Tło dla punktów
-        const scoreX = canvas.width / 2;
-        const scoreY = 40;
-        const scoreWidth = 180;
-        const scoreHeight = 50;
+    drawProgressBar() {
+        // Pasek progresu z postacią i metą
+        const barX = canvas.width / 2;
+        const barY = 40;
+        const barWidth = canvas.width * 0.85; // 85% szerokości ekranu
+        const barHeight = 50;
         
-        // Gradient tła
+        // Oblicz postęp (0-1)
+        const progress = Math.min(1, gameProgress / FINISH_LINE_DISTANCE);
+        
+        // Tło paska
         const bgGradient = ctx.createLinearGradient(
-            scoreX - scoreWidth / 2,
-            scoreY - scoreHeight / 2,
-            scoreX + scoreWidth / 2,
-            scoreY + scoreHeight / 2
+            barX - barWidth / 2,
+            barY - barHeight / 2,
+            barX + barWidth / 2,
+            barY + barHeight / 2
         );
         bgGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
         bgGradient.addColorStop(1, 'rgba(240, 248, 255, 0.95)');
         
-        // Zaokrąglony prostokąt tła
         ctx.fillStyle = bgGradient;
         ctx.beginPath();
-        ctx.roundRect(scoreX - scoreWidth / 2, scoreY - scoreHeight / 2, scoreWidth, scoreHeight, 15);
+        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 15);
         ctx.fill();
         
         // Obramowanie
         ctx.strokeStyle = 'rgba(74, 144, 226, 0.5)';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.roundRect(scoreX - scoreWidth / 2, scoreY - scoreHeight / 2, scoreWidth, scoreHeight, 15);
+        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 15);
         ctx.stroke();
         
-        // Wewnętrzne obramowanie
-        ctx.strokeStyle = 'rgba(74, 144, 226, 0.2)';
-        ctx.lineWidth = 1;
+        // Linia postępu (wypełnienie pokazujące ile przebyliśmy)
+        const progressWidth = (barWidth - 60) * progress; // -60 dla miejsca na postać i metę
+        const progressStartX = barX - barWidth / 2 + 30; // Start po lewej (po postaci)
+        
+        const progressGradient = ctx.createLinearGradient(
+            progressStartX,
+            barY - barHeight / 2,
+            progressStartX + progressWidth,
+            barY + barHeight / 2
+        );
+        progressGradient.addColorStop(0, '#4A90E2');
+        progressGradient.addColorStop(1, '#2C5F8D');
+        
+        ctx.fillStyle = progressGradient;
         ctx.beginPath();
-        ctx.roundRect(scoreX - scoreWidth / 2 + 2, scoreY - scoreHeight / 2 + 2, scoreWidth - 4, scoreHeight - 4, 13);
-        ctx.stroke();
+        ctx.roundRect(progressStartX, barY - barHeight / 2 + 5, progressWidth, barHeight - 10, 10);
+        ctx.fill();
         
-        // Cień
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 4;
+        // Postać po lewej stronie paska
+        const playerIconX = barX - barWidth / 2 + 15;
+        const playerIconY = barY;
+        const playerIconSize = 30;
         
-        // Tekst punktów
-        ctx.fillStyle = '#2C5F8D';
-        ctx.font = 'bold 28px Arial';
+        ctx.save();
+        ctx.translate(playerIconX, playerIconY);
+        // Uproszczona postać (mały balon)
+        ctx.fillStyle = '#FF6B6B';
+        ctx.beginPath();
+        ctx.arc(0, -8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Kosz
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(-5, 0, 10, 6);
+        ctx.restore();
+        
+        // Meta po prawej stronie paska
+        const finishIconX = barX + barWidth / 2 - 15;
+        const finishIconY = barY;
+        const finishIconSize = 30;
+        
+        ctx.save();
+        ctx.translate(finishIconX, finishIconY);
+        // Flaga mety (czarno-biała szachownica)
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-8, -12, 16, 12);
+        ctx.fillStyle = '#FFF';
+        // Szachownica (2x2)
+        ctx.fillRect(-8, -12, 8, 6);
+        ctx.fillRect(0, -6, 8, 6);
+        // Maszt
+        ctx.fillStyle = '#654321';
+        ctx.fillRect(-1, -12, 2, 20);
+        ctx.restore();
+        
+        // Timer u góry (po prawej stronie)
+        const timerX = canvas.width - 100;
+        const timerY = 40;
+        const timeColor = gameTime < 10 ? '#FF4444' : '#2C5F8D'; // Czerwony gdy mało czasu
+        
+        ctx.fillStyle = timeColor;
+        ctx.font = 'bold 32px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'transparent';
-        ctx.fillText(`Punkty: ${score}`, scoreX, scoreY);
+        ctx.fillText(Math.ceil(gameTime).toString(), timerX, timerY);
     }
     
     drawSpeedBar() {
@@ -1430,10 +1506,84 @@ class Game {
         ctx.fillText('RESTART', menuX, buttonY);
     }
     
+    drawVictoryScreen() {
+        // Półprzezroczyste tło
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Tło menu
+        const menuX = canvas.width / 2;
+        const menuY = canvas.height / 2;
+        const menuWidth = Math.min(350, canvas.width * 0.8);
+        const menuHeight = 280;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(menuX - menuWidth / 2, menuY - menuHeight / 2, menuWidth, menuHeight, 20);
+        ctx.fill();
+        
+        // Cień menu
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 10;
+        
+        // Tytuł - Sukces!
+        ctx.fillStyle = '#4CAF50'; // Zielony dla sukcesu
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'transparent';
+        ctx.fillText('Sukces!', menuX, menuY - 70);
+        
+        // Czas ukończenia
+        const finishTime = MAX_TIME - gameTime;
+        ctx.fillStyle = '#555';
+        ctx.font = '22px Arial';
+        ctx.fillText(`Czas: ${finishTime.toFixed(1)}s`, menuX, menuY - 20);
+        
+        // Przycisk Restart
+        const buttonY = menuY + 50;
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        
+        const buttonGradient = ctx.createLinearGradient(
+            menuX - buttonWidth / 2,
+            buttonY - buttonHeight / 2,
+            menuX + buttonWidth / 2,
+            buttonY + buttonHeight / 2
+        );
+        buttonGradient.addColorStop(0, '#4A90E2');
+        buttonGradient.addColorStop(1, '#2C5F8D');
+        ctx.fillStyle = buttonGradient;
+        ctx.beginPath();
+        ctx.roundRect(menuX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 25);
+        ctx.fill();
+        
+        // Cień przycisku
+        ctx.shadowColor = 'rgba(74, 144, 226, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'transparent';
+        ctx.fillText('RESTART', menuX, buttonY);
+    }
+    
     gameOver() {
         gameState = 'gameOver';
         isJetpackActive = false; // Wyłącz jetpack
         // Wynik jest wyświetlany na canvasie w drawGameOverScreen()
+    }
+    
+    victory() {
+        gameState = 'victory';
+        isJetpackActive = false; // Wyłącz jetpack
+        // Czas ukończenia jest wyświetlany na canvasie w drawVictoryScreen()
     }
     
     reset() {
@@ -1447,6 +1597,8 @@ class Game {
         isJetpackActive = false; // Reset jetpacka
         windMomentum = 0; // Reset momentum
         introAnimationProgress = 0; // Reset animacji intro
+        gameTime = MAX_TIME; // Reset timera
+        startTime = null; // Reset czasu rozpoczęcia
         // Punkty są renderowane na canvasie, nie w HTML
         
         // Reset gwiazdek
@@ -1547,6 +1699,23 @@ function handleClick(event) {
             isJetpackActive = false;
             return true; // Zwróć true żeby potwierdzić kliknięcie
         }
+    } else if (gameState === 'victory') {
+        // Sprawdź czy kliknięto w przycisk Restart (dla ekranu Victory)
+        const menuX = canvas.width / 2;
+        const menuY = canvas.height / 2;
+        const buttonY = menuY + 50;
+        const buttonWidth = 200;
+        const buttonHeight = 50;
+        
+        // Sprawdź kolizję z przyciskiem Restart
+        if (x >= menuX - buttonWidth / 2 && x <= menuX + buttonWidth / 2 &&
+            y >= buttonY - buttonHeight / 2 && y <= buttonY + buttonHeight / 2) {
+            game.reset();
+            gameState = 'start'; // Wróć do stanu start z animacją
+            introAnimationProgress = 0.001; // Rozpocznij animację intro
+            isJetpackActive = false;
+            return true; // Zwróć true żeby potwierdzić kliknięcie
+        }
     }
     return false;
 }
@@ -1575,7 +1744,7 @@ canvas.addEventListener('mousedown', (e) => {
     if (gameState === 'playing') {
         e.preventDefault();
         activateJetpack(e);
-    } else if (gameState === 'start' || gameState === 'gameOver') {
+    } else if (gameState === 'start' || gameState === 'gameOver' || gameState === 'victory') {
         e.preventDefault();
         handleClick(e);
     }
