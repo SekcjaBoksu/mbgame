@@ -954,7 +954,33 @@ class Game {
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Góry w tle (scrollują się wolniej - parallax, różne warstwy)
+        // Gwiazdki świecące na niebie (świąteczne) - NAJPIERW gwiazdki (w tle)
+        this.stars.forEach(star => {
+            // Animacja migania gwiazdek
+            star.brightness += star.twinkleSpeed;
+            if (star.brightness > 1.0) {
+                star.brightness = 0.5;
+            }
+            
+            // Scrollowanie gwiazdek (wolniej niż świat)
+            const starX = (star.x - scrollOffset * 0.1) % canvas.width;
+            const finalStarX = starX < 0 ? starX + canvas.width : starX;
+            
+            // Rysuj gwiazdkę
+            const alpha = 0.5 + Math.sin(star.brightness * Math.PI * 2) * 0.5; // Miganie
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(finalStarX, star.y, star.size, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Efekt świecenia (opcjonalnie - większa gwiazdka z mniejszą przezroczystością)
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
+            ctx.beginPath();
+            ctx.arc(finalStarX, star.y, star.size * 2, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        // Góry w tle (scrollują się wolniej - parallax, różne warstwy) - PO gwiazdkach (zasłaniają je)
         // Najpierw rysuj dalsze góry (za bliższymi)
         const farMountains = this.mountains.filter(m => m.layer === 'far');
         const nearMountains = this.mountains.filter(m => m.layer === 'near');
@@ -1018,32 +1044,6 @@ class Game {
             ctx.lineTo(screenX + mountain.width / 2, peakY);
             ctx.lineTo(screenX + mountain.width, baseY);
             ctx.closePath();
-            ctx.fill();
-        });
-        
-        // Gwiazdki świecące na niebie (świąteczne)
-        this.stars.forEach(star => {
-            // Animacja migania gwiazdek
-            star.brightness += star.twinkleSpeed;
-            if (star.brightness > 1.0) {
-                star.brightness = 0.5;
-            }
-            
-            // Scrollowanie gwiazdek (wolniej niż świat)
-            const starX = (star.x - scrollOffset * 0.1) % canvas.width;
-            const finalStarX = starX < 0 ? starX + canvas.width : starX;
-            
-            // Rysuj gwiazdkę
-            const alpha = 0.5 + Math.sin(star.brightness * Math.PI * 2) * 0.5; // Miganie
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.beginPath();
-            ctx.arc(finalStarX, star.y, star.size, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Efekt świecenia (opcjonalnie - większa gwiazdka z mniejszą przezroczystością)
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
-            ctx.beginPath();
-            ctx.arc(finalStarX, star.y, star.size * 2, 0, Math.PI * 2);
             ctx.fill();
         });
         
