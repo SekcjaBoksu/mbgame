@@ -76,6 +76,7 @@ class Player {
         this.maxUpwardSpeed = -7; // Maksymalna prędkość w górę
         this.maxDownwardSpeed = 5; // Maksymalna prędkość w dół
         this.rotation = 0;
+        this.hairAnimation = 0; // Animacja włosów
     }
     
     update() {
@@ -112,6 +113,10 @@ class Player {
         
         // Rotacja w zależności od prędkości (bardziej subtelna)
         this.rotation = Math.min(Math.max(this.velocityY * 0.08, -0.2), 0.2);
+        
+        // Animacja włosów - zależna od prędkości i czasu (bardziej dynamiczna)
+        this.hairAnimation += 0.15 + Math.abs(this.velocityY) * 0.08;
+        
         return false;
     }
     
@@ -129,6 +134,11 @@ class Player {
         ctx.rotate(this.rotation);
         
         const smileIntensity = isInWindStream ? 1.0 : 0.3; // Mocny uśmiech w wietrze, lekki poza nim
+        
+        // Oblicz siłę wiatru dla animacji włosów
+        const windStrength = isInWindStream ? 1.5 : 0.3;
+        const speedStrength = Math.abs(this.velocityY) * 0.1;
+        const totalWindEffect = windStrength + speedStrength;
         
         // NOGI (na dole)
         ctx.fillStyle = '#2C5F8D';
@@ -169,6 +179,71 @@ class Player {
         ctx.beginPath();
         ctx.arc(0, -this.height / 2.5, this.width / 4, 0, Math.PI * 2);
         ctx.fill();
+        
+        // WŁOSY - ZAKOMENTOWANE (na razie)
+        /*
+        const headY = -this.height / 2.5;
+        const headRadius = this.width / 4;
+        
+        // Główne pasmo włosów na górze głowy - bardziej widoczne i animowane
+        ctx.fillStyle = '#1a1a1a'; // Kruczoczarne
+        ctx.beginPath();
+        const topWave = Math.sin(this.hairAnimation) * totalWindEffect;
+        const topWaveY = Math.cos(this.hairAnimation * 0.8) * totalWindEffect * 0.5;
+        ctx.ellipse(
+            topWave * 4, // Większa animacja w poziomie
+            headY - headRadius * 0.85 + topWaveY,
+            headRadius * 0.65 + Math.abs(topWave) * 1.5,
+            headRadius * 0.25 + Math.abs(topWaveY) * 0.5,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Boki głowy - pasma włosów
+        ctx.fillStyle = '#0d0d0d'; // Jeszcze ciemniejsze dla głębi
+        for (let i = 0; i < 6; i++) {
+            const angle = (i - 3) * 0.25; // Pozycja pasma
+            const wave = Math.sin(this.hairAnimation + i * 0.6) * totalWindEffect;
+            const waveY = Math.cos(this.hairAnimation * 0.7 + i * 0.4) * totalWindEffect * 0.3;
+            const x = Math.sin(angle) * headRadius * 0.85;
+            const y = headY - headRadius * 0.6 + Math.cos(angle) * headRadius * 0.2 + waveY;
+            
+            ctx.beginPath();
+            // Każde pasmo jako elipsa - bardziej realistyczne
+            ctx.ellipse(
+                x + wave * 5, // Większa animacja w poziomie
+                y,
+                2.5 + Math.abs(wave) * 1.5,
+                4 + Math.abs(waveY) * 2,
+                angle + wave * 0.3, // Rotacja zależna od wiatru
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Przednia część włosów (grzywka) - bardziej widoczna
+        ctx.fillStyle = '#1a1a1a';
+        for (let i = 0; i < 4; i++) {
+            const offset = (i - 1.5) * 4;
+            const wave = Math.sin(this.hairAnimation * 1.2 + i * 0.4) * totalWindEffect;
+            const waveY = Math.cos(this.hairAnimation * 0.9 + i * 0.3) * totalWindEffect * 0.4;
+            
+            ctx.beginPath();
+            ctx.ellipse(
+                offset + wave * 3,
+                headY - headRadius * 0.7 + waveY,
+                2 + Math.abs(wave) * 1,
+                5 + Math.abs(waveY) * 1.5,
+                wave * 0.2,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+        */
         
         // TWARZ - oczy
         ctx.fillStyle = '#000';
@@ -626,9 +701,10 @@ class Game {
         scrollOffset = 0;
         
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
-        this.turbines.push(new WindTurbine(300, 120));  // Krótka wieża
-        this.turbines.push(new WindTurbine(600, 220)); // Średnia wieża
-        this.turbines.push(new WindTurbine(900, 180));  // Długa wieża
+        const availableHeight = canvas.height - groundHeight;
+        this.turbines.push(new WindTurbine(300, 100));  // Krótka wieża
+        this.turbines.push(new WindTurbine(600, availableHeight * 0.5)); // Średnia wieża (50% wysokości)
+        this.turbines.push(new WindTurbine(900, availableHeight * 0.7));  // Wysoka wieża (70% wysokości)
     }
     
     update() {
@@ -687,7 +763,10 @@ class Game {
         if (lastTurbineX - scrollOffset < canvas.width + 300) {
             // Różne wysokości wieży (podstawy zawsze na ziemi)
             // Wieże od 100 do 300 pikseli wysokości (różne wysokości gondoli)
-            const towerHeight = 100 + Math.random() * 200; // Od 100 do 300 pikseli
+            // Większe zróżnicowanie wysokości - od 80 do 70% wysokości ekranu (aby przekraczały 30%)
+            const minHeight = 80;
+            const maxHeight = (canvas.height - groundHeight) * 0.7; // 70% dostępnej wysokości
+            const towerHeight = minHeight + Math.random() * (maxHeight - minHeight);
             const newX = Math.max(lastTurbineX + 400, scrollOffset + canvas.width + 200);
             this.turbines.push(new WindTurbine(newX, towerHeight));
         }
@@ -1014,9 +1093,10 @@ class Game {
         // Punkty są renderowane na canvasie, nie w HTML
         
         // Utwórz początkowe turbiny - różne wysokości wieży (podstawy zawsze na ziemi)
-        this.turbines.push(new WindTurbine(300, 120));  // Krótka wieża
-        this.turbines.push(new WindTurbine(600, 220)); // Średnia wieża
-        this.turbines.push(new WindTurbine(900, 180));  // Długa wieża
+        const availableHeight = canvas.height - groundHeight;
+        this.turbines.push(new WindTurbine(300, 100));  // Krótka wieża
+        this.turbines.push(new WindTurbine(600, availableHeight * 0.5)); // Średnia wieża (50% wysokości)
+        this.turbines.push(new WindTurbine(900, availableHeight * 0.7));  // Wysoka wieża (70% wysokości)
     }
 }
 

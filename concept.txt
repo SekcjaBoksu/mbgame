@@ -115,4 +115,31 @@ NOWE WYMAGANIA (AKTUALIZACJA):
    - Wiatrak jest usuwany dopiero gdy smuga całkowicie zniknie (z marginesem 50% szerokości ekranu)
    - Rozdzielenie długości wizualnej (0.6 × szerokość) od mechanicznej (2.0 × szerokość)
    - Wizualnie smuga jest krótsza i ładniejsza, ale boost działa na dłuższym zasięgu
+   - **Stożkowy kształt smugi:**
+     - Smuga zaczyna się wąsko przy wiatraku (30px) i poszerza się w prawo (do 120px)
+     - Kształt trapezu zamiast prostokąta - bardziej naturalny wygląd
+     - Gradient z maksymalną przezroczystością 0.6 (bardziej subtelny)
+
+6. **Mechanika momentum:**
+   - ✅ SUKCES: Boost pozostaje z graczem po wyjściu ze smugi wiatru
+   - Momentum stopniowo spada (mnożone przez 0.97 co frame = spada o 3% na klatkę)
+   - Gdy gracz jest w smudze, momentum jest ustawiane na aktualną siłę wiatru
+   - Gdy gracz wyjdzie ze smugi, momentum stopniowo zanika zamiast natychmiast znikać
+   - Prędkość używa maksimum z aktualnej siły wiatru i momentum
+
+7. **Postać bohatera:**
+   - ✅ SUKCES: Dopracowana postać z twarzą, ramionami, korpusem i nogami
+   - Twarz z oczami (dwie czarne kropki) i uśmiechem
+   - Uśmiech reaguje na wiatr: mocny uśmiech w podmuchu (1.0), lekki poza nim (0.3)
+   - Ramiona, korpus (tułów) i nogi są wyraźnie widoczne
+   - Logo klienta na koszulce
+   - Jetpack z płomieniami gdy aktywny
+   - **Włosy:** Zakomentowane na razie (do powrotu później)
+
+8. **Wysokości wiatraków:**
+   - ✅ SUKCES: Zwiększone zróżnicowanie wysokości wiatraków
+   - Wysokość wieży: od 80px do 70% dostępnej wysokości ekranu
+   - Przykład: przy wysokości ekranu 800px i groundHeight 80px, maksymalna wysokość to 504px (70% z 720px)
+   - Wiatraki mogą teraz przekraczać 30% wysokości planszy
+   - Początkowe turbiny: 100px, 50% i 70% dostępnej wysokości
 
