@@ -213,7 +213,7 @@ class Player {
         
         // RAMIONA - przedłużone do lin balonu
         const balloonRadius = (this.width * 0.8) * this.balloonSize;
-        const balloonY = -this.height / 2 - balloonRadius - 10;
+        const balloonY = -this.height / 2 - balloonRadius - 30; // Dystans między balonem a głową (30px)
         const basketTopY = this.height / 2 + 5;
         
         // Pozycje gdzie ramiona trzymają liny (na wysokości tułowia)
@@ -298,26 +298,7 @@ class Player {
         
         // Balon na gorące powietrze - nad postacią (zmienne już zdefiniowane w sekcji ramion)
         
-        // Balon (okrągły, kolorowy)
-        const balloonGradient = ctx.createRadialGradient(0, balloonY, 0, 0, balloonY, balloonRadius);
-        balloonGradient.addColorStop(0, '#FF6B6B'); // Czerwony u góry
-        balloonGradient.addColorStop(0.3, '#FF8E8E'); // Jaśniejszy czerwony
-        balloonGradient.addColorStop(0.6, '#FFB3B3'); // Różowy
-        balloonGradient.addColorStop(1, '#FFD4D4'); // Bardzo jasny różowy u dołu
-        
-        ctx.fillStyle = balloonGradient;
-        ctx.beginPath();
-        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Obramowanie balonu
-        ctx.strokeStyle = '#FF4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // Gorące powietrze (widoczne gdy balon aktywny)
+        // Gorące powietrze (widoczne gdy balon aktywny) - rysowane PRZED balonem, żeby balon przykrywał górną część
         if (isJetpackActive) {
             ctx.save();
             const heatY = balloonY + balloonRadius;
@@ -332,6 +313,25 @@ class Player {
             ctx.fill();
             ctx.restore();
         }
+        
+        // Balon (okrągły, kolorowy) - gradient od ciemno czerwonego do jaśniejszego - rysowany PO ogniu
+        const balloonGradient = ctx.createRadialGradient(0, balloonY, 0, 0, balloonY, balloonRadius);
+        balloonGradient.addColorStop(0, '#8B0000'); // Mocno ciemno czerwony w środku
+        balloonGradient.addColorStop(0.3, '#B22222'); // Ciemno czerwony
+        balloonGradient.addColorStop(0.6, '#DC143C'); // Czerwony
+        balloonGradient.addColorStop(1, '#FF4444'); // Jaśniejszy czerwony na zewnątrz
+        
+        ctx.fillStyle = balloonGradient;
+        ctx.beginPath();
+        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Obramowanie balonu
+        ctx.strokeStyle = '#FF4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
+        ctx.stroke();
         
         // Liny łączące balon z koszem (4 linie) - basketTopY już zdefiniowane w sekcji ramion
         ctx.strokeStyle = '#666';
