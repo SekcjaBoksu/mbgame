@@ -166,20 +166,57 @@ class Player {
         // Szerokość tułowia u góry (używana w korpusie i ramionach)
         const torsoTopWidth = this.width / 1.8;
         
+        // Wymiary tułowia (używane w pelerynce i korpusie)
+        const torsoHeight = this.height / 2.2;
+        const torsoTopY = -torsoHeight / 2;
+        
+        // PELERYNKA - prosty kształt z jednym punktem zaczepienia
+        const neckY = -this.height / 3.5; // Pozycja szyi (punkt zaczepienia)
+        const torsoBottomY = torsoHeight / 2;
+        const legHeight = this.height / 3;
+        const legStartY = torsoBottomY + 3;
+        const legMidY = legStartY + legHeight / 2;
+        
+        const capeLength = legMidY - neckY; // Długość pelerynki
+        const capeTopWidth = this.width * 0.4; // Szerokość u góry (węższa)
+        const capeBottomWidth = this.width * 0.7; // Szerokość na dole (szersza)
+        
+        // Reakcja na ruch - kąt powiewania zależny od prędkości
+        const windForce = Math.max(0, currentSpeed - 0.7) * 0.5; // Siła wiatru zależna od prędkości
+        const capeAngle = Math.sin(Date.now() * 0.005) * windForce * 0.3; // Kąt powiewania
+        
+        // Prosty trapezowy kształt pelerynki
+        ctx.fillStyle = '#DC143C'; // Czerwony kolor
+        ctx.beginPath();
+        // Punkt zaczepienia (szyja) - środek
+        ctx.moveTo(0, neckY);
+        // Lewy górny róg (węższy)
+        ctx.lineTo(-capeTopWidth / 2, neckY);
+        // Lewy dolny róg z powiewaniem (szerszy)
+        ctx.lineTo(-capeBottomWidth / 2 + capeAngle * capeLength, neckY + capeLength);
+        // Prawy dolny róg z powiewaniem (szerszy)
+        ctx.lineTo(capeBottomWidth / 2 + capeAngle * capeLength, neckY + capeLength);
+        // Prawy górny róg (węższy)
+        ctx.lineTo(capeTopWidth / 2, neckY);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Obramowanie
+        ctx.strokeStyle = '#8B0000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
         // KORPUS (tułów) - atletyczny kształt (szerokie bary, wąska talia)
         ctx.fillStyle = '#4A90E2';
         ctx.beginPath();
         // Górna część (szerokie bary) - trapez odwrócony
         const torsoBottomWidth = this.width / 2.8; // Wąska talia
-        const torsoHeight = this.height / 2.2;
-        const torsoTopY = -torsoHeight / 2;
-        const torsoBottomY = torsoHeight / 2;
+        // torsoBottomY, legHeight, legStartY już zdefiniowane w sekcji pelerynki
         
         // NOGI (spodnie) - łączą się z dolną częścią korpusu, delikatnie ciemniejsze
         ctx.fillStyle = '#3A6FA2'; // Delikatnie ciemniejszy niebieski niż korpus (#4A90E2)
         const legWidth = torsoBottomWidth / 2.5; // Szerokość nogi proporcjonalna do talii
-        const legHeight = this.height / 3;
-        const legStartY = torsoBottomY + 3; // Minimalnie niżej niż dolna krawędź korpusu
+        // legHeight i legStartY już zdefiniowane w sekcji pelerynki
         // Lewa noga - zaczyna się od lewej strony talii
         ctx.fillRect(-torsoBottomWidth / 2 + (torsoBottomWidth - legWidth * 2) / 3, legStartY, legWidth, legHeight);
         // Prawa noga - zaczyna się od prawej strony talii
@@ -300,6 +337,54 @@ class Player {
         // Rysuj uśmiech jako łuk
         ctx.arc(0, smileY - smileHeight, smileWidth, 0.2, Math.PI - 0.2);
         ctx.stroke();
+        
+        // CZAPKA MIKOŁAJA z pomponem
+        const headCenterY = -this.height / 2.5;
+        const headRadius = this.width / 4;
+        const hatWidth = headRadius * 1.8; // Szerokość czapki u podstawy (dopasowana do szerokości głowy)
+        const hatHeight = headRadius * 0.9; // Wysokość czapki
+        const hatOffset = headRadius * 0.2; // Przesunięcie czapki w dół
+        const hatBaseY = headCenterY - headRadius + hatOffset; // Dolna część czapki (nieco niżej)
+        const hatTopY = hatBaseY - hatHeight; // Wierzchołek czapki
+        
+        // Czerwona czapka (trójkąt)
+        ctx.fillStyle = '#DC143C'; // Czerwony kolor
+        ctx.beginPath();
+        ctx.moveTo(0, hatTopY); // Wierzchołek czapki
+        ctx.lineTo(-hatWidth / 2, hatBaseY); // Lewy dolny róg
+        ctx.lineTo(hatWidth / 2, hatBaseY); // Prawy dolny róg
+        ctx.closePath();
+        ctx.fill();
+        
+        // Biała obwódka u dołu czapki
+        const brimHeight = headRadius * 0.12; // Wysokość obwódki
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(-hatWidth / 2, hatBaseY, hatWidth, brimHeight);
+        
+        // Biały pompon na końcu czapki
+        const pomponRadius = headRadius * 0.2;
+        const pomponX = 0;
+        const pomponY = hatTopY;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(pomponX, pomponY, pomponRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Cień na pomponie (dla głębi)
+        const pomponGradient = ctx.createRadialGradient(
+            pomponX - pomponRadius * 0.3,
+            pomponY - pomponRadius * 0.3,
+            0,
+            pomponX,
+            pomponY,
+            pomponRadius
+        );
+        pomponGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        pomponGradient.addColorStop(1, 'rgba(240, 240, 240, 0.7)');
+        ctx.fillStyle = pomponGradient;
+        ctx.beginPath();
+        ctx.arc(pomponX, pomponY, pomponRadius, 0, Math.PI * 2);
+        ctx.fill();
         
         // Balon na gorące powietrze - nad postacią (zmienne już zdefiniowane w sekcji ramion)
         
