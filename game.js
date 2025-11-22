@@ -158,34 +158,110 @@ class Player {
         // Uśmiech od 0.3 (wolno) do 1.0 (szybko) - z limitem
         const smileIntensity = 0.3 + (speedPercent * 0.7); // 0.3 do 1.0
         
-        // NOGI (na dole)
-        ctx.fillStyle = '#2C5F8D';
-        // Lewa noga
-        ctx.fillRect(-this.width / 6, this.height / 3, this.width / 6, this.height / 3);
-        // Prawa noga
-        ctx.fillRect(this.width / 12, this.height / 3, this.width / 6, this.height / 3);
+        // Szerokość tułowia u góry (używana w korpusie i ramionach)
+        const torsoTopWidth = this.width / 1.8;
         
-        // KORPUS (tułów)
+        // KORPUS (tułów) - atletyczny kształt (szerokie bary, wąska talia)
         ctx.fillStyle = '#4A90E2';
         ctx.beginPath();
-        ctx.ellipse(0, 0, this.width / 2.5, this.height / 2.5, 0, 0, Math.PI * 2);
+        // Górna część (szerokie bary) - trapez odwrócony
+        const torsoBottomWidth = this.width / 2.8; // Wąska talia
+        const torsoHeight = this.height / 2.2;
+        const torsoTopY = -torsoHeight / 2;
+        const torsoBottomY = torsoHeight / 2;
+        
+        // NOGI (spodnie) - łączą się z dolną częścią korpusu, delikatnie ciemniejsze
+        ctx.fillStyle = '#3A6FA2'; // Delikatnie ciemniejszy niebieski niż korpus (#4A90E2)
+        const legWidth = torsoBottomWidth / 2.5; // Szerokość nogi proporcjonalna do talii
+        const legHeight = this.height / 3;
+        const legStartY = torsoBottomY + 3; // Minimalnie niżej niż dolna krawędź korpusu
+        // Lewa noga - zaczyna się od lewej strony talii
+        ctx.fillRect(-torsoBottomWidth / 2 + (torsoBottomWidth - legWidth * 2) / 3, legStartY, legWidth, legHeight);
+        // Prawa noga - zaczyna się od prawej strony talii
+        ctx.fillRect(torsoBottomWidth / 2 - (torsoBottomWidth - legWidth * 2) / 3 - legWidth, legStartY, legWidth, legHeight);
+        
+        // Rysuj trapez (szeroki u góry, wąski u dołu)
+        ctx.moveTo(-torsoTopWidth / 2, torsoTopY); // Lewy górny
+        ctx.lineTo(torsoTopWidth / 2, torsoTopY); // Prawy górny
+        ctx.lineTo(torsoBottomWidth / 2, torsoBottomY); // Prawy dolny
+        ctx.lineTo(-torsoBottomWidth / 2, torsoBottomY); // Lewy dolny
+        ctx.closePath();
         ctx.fill();
         
-        // RAMIONA
-        ctx.fillStyle = '#4A90E2';
-        // Lewe ramię
-        ctx.fillRect(-this.width / 2.2, -this.height / 6, this.width / 4, this.height / 4);
-        // Prawe ramię
-        ctx.fillRect(this.width / 2.2 - this.width / 4, -this.height / 6, this.width / 4, this.height / 4);
+        // PAS (pasek) - łączy korpus z nogami
+        const beltWidth = torsoBottomWidth * 1.1; // Nieco szerszy niż talia
+        const beltHeight = 5; // Wysokość paska
+        const beltY = torsoBottomY + 1; // Tuż pod korpusem
         
-        // Logo na koszulce
+        // Czarny pasek
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(-beltWidth / 2, beltY, beltWidth, beltHeight);
+        
+        // Złota klamra (środek paska)
+        ctx.fillStyle = '#FFD700'; // Złoty kolor
+        const buckleWidth = 8;
+        const buckleHeight = beltHeight - 1;
+        ctx.fillRect(-buckleWidth / 2, beltY + 0.5, buckleWidth, buckleHeight);
+        
+        // Detale klamry (linie)
+        ctx.strokeStyle = '#FFA500'; // Ciemniejszy złoty dla detali
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-buckleWidth / 2, beltY + beltHeight / 2);
+        ctx.lineTo(buckleWidth / 2, beltY + beltHeight / 2);
+        ctx.stroke();
+        
+        // RAMIONA - przedłużone do lin balonu
+        const balloonRadius = (this.width * 0.8) * this.balloonSize;
+        const balloonY = -this.height / 2 - balloonRadius - 10;
+        const basketTopY = this.height / 2 + 5;
+        
+        // Pozycje gdzie ramiona trzymają liny (na wysokości tułowia)
+        const handY = -this.height / 12; // Pozycja dłoni (na wysokości tułowia)
+        const leftHandX = -this.width * 0.3; // Pozycja lewej dłoni na linie
+        const rightHandX = this.width * 0.3; // Pozycja prawej dłoni na linie
+        
+        ctx.fillStyle = '#4A90E2';
+        // Lewe ramię - od tułowia do lin
+        const leftArmStartX = -torsoTopWidth / 2; // Lewa strona tułowia
+        const leftArmStartY = -this.height / 8; // Pozycja na wysokości tułowia
+        const leftArmEndX = leftHandX;
+        const leftArmEndY = handY;
+        const leftArmLength = Math.sqrt(
+            Math.pow(leftArmEndX - leftArmStartX, 2) + 
+            Math.pow(leftArmEndY - leftArmStartY, 2)
+        );
+        ctx.save();
+        ctx.translate(leftArmStartX, leftArmStartY);
+        const leftArmAngle = Math.atan2(leftArmEndY - leftArmStartY, leftArmEndX - leftArmStartX);
+        ctx.rotate(leftArmAngle);
+        ctx.fillRect(0, -this.width / 8, leftArmLength, this.width / 4);
+        ctx.restore();
+        
+        // Prawe ramię - od tułowia do lin (poprawione pozycjonowanie)
+        const rightArmStartX = torsoTopWidth / 2; // Prawa strona tułowia
+        const rightArmStartY = -this.height / 8; // Pozycja na wysokości tułowia
+        const rightArmEndX = rightHandX;
+        const rightArmEndY = handY;
+        const rightArmLength = Math.sqrt(
+            Math.pow(rightArmEndX - rightArmStartX, 2) + 
+            Math.pow(rightArmEndY - rightArmStartY, 2)
+        );
+        ctx.save();
+        ctx.translate(rightArmStartX, rightArmStartY);
+        const rightArmAngle = Math.atan2(rightArmEndY - rightArmStartY, rightArmEndX - rightArmStartX);
+        ctx.rotate(rightArmAngle);
+        ctx.fillRect(0, -this.width / 8, rightArmLength, this.width / 4);
+        ctx.restore();
+        
+        // Logo na koszulce - dostosowane do atletycznego kształtu
         if (logoImage) {
             ctx.save();
-            const logoSize = this.width * 0.35;
+            const logoSize = this.width * 0.32; // Nieco mniejsze, żeby się zmieściło
             ctx.drawImage(
                 logoImage,
                 -logoSize / 2,
-                -logoSize / 3,
+                -logoSize / 4, // Nieco wyżej
                 logoSize,
                 logoSize
             );
@@ -220,9 +296,7 @@ class Player {
         ctx.arc(0, smileY - smileHeight, smileWidth, 0.2, Math.PI - 0.2);
         ctx.stroke();
         
-        // Balon na gorące powietrze - nad postacią
-        const balloonRadius = (this.width * 0.8) * this.balloonSize; // Rozmiar balonu zależny od napełnienia
-        const balloonY = -this.height / 2 - balloonRadius - 10; // Pozycja nad głową
+        // Balon na gorące powietrze - nad postacią (zmienne już zdefiniowane w sekcji ramion)
         
         // Balon (okrągły, kolorowy)
         const balloonGradient = ctx.createRadialGradient(0, balloonY, 0, 0, balloonY, balloonRadius);
@@ -259,16 +333,27 @@ class Player {
             ctx.restore();
         }
         
-        // Liny łączące balon z koszem (4 linie)
+        // Liny łączące balon z koszem (4 linie) - basketTopY już zdefiniowane w sekcji ramion
         ctx.strokeStyle = '#666';
         ctx.lineWidth = 2;
-        const basketTopY = this.height / 2 + 5; // Górna część kosza
         for (let i = -1; i <= 1; i += 2) {
             ctx.beginPath();
             ctx.moveTo(i * balloonRadius * 0.3, balloonY + balloonRadius);
             ctx.lineTo(i * this.width * 0.3, basketTopY);
             ctx.stroke();
         }
+        
+        // Dłonie (okrągłe, w kolorze skóry) na linach - rysowane PO linach, żeby były na wierzchu
+        ctx.fillStyle = '#FFDBAC'; // Kolor skóry
+        const handRadius = this.width / 12;
+        // Lewa dłoń
+        ctx.beginPath();
+        ctx.arc(leftHandX, handY, handRadius, 0, Math.PI * 2);
+        ctx.fill();
+        // Prawa dłoń
+        ctx.beginPath();
+        ctx.arc(rightHandX, handY, handRadius, 0, Math.PI * 2);
+        ctx.fill();
         
         // Kosz (pod postacią)
         const basketWidth = this.width * 0.7;
