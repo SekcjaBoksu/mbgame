@@ -58,6 +58,11 @@ let windMomentum = 0; // Momentum wiatru - stopniowo spada po wyjściu ze smugi
 const momentumDecay = 0.985; // Współczynnik spadku momentum (0.985 = spada o 1.5% co frame - spowolnione)
 let introAnimationProgress = 0; // Postęp animacji intro (0-1)
 const introAnimationDuration = 120; // Długość animacji w klatkach (około 2 sekundy przy 60 FPS)
+let crashAnimationProgress = 0; // Postęp animacji kolizji (0-1)
+const crashAnimationDuration = 90; // Długość animacji kolizji w klatkach (około 1.5 sekundy przy 60 FPS)
+let isCrashing = false; // Czy trwa animacja kolizji
+let crashBounceVelocity = 0; // Prędkość odbicia podczas kolizji
+let crashParticles = []; // Cząsteczki śniegu przy kolizji
 
 // Nowe zmienne dla ścigania z czasem
 const MAX_TIME = 60; // Maksymalny czas w sekundach
@@ -145,7 +150,7 @@ class Player {
         isJetpackActive = false;
     }
     
-    draw(isInWindStream = false, currentSpeed = 0.7) {
+    draw(isInWindStream = false, currentSpeed = 0.7, isCrashMode = false) {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
@@ -315,32 +320,39 @@ class Player {
         }
         
         // Balon (okrągły, kolorowy) - gradient od ciemno czerwonego do jaśniejszego - rysowany PO ogniu
-        const balloonGradient = ctx.createRadialGradient(0, balloonY, 0, 0, balloonY, balloonRadius);
-        balloonGradient.addColorStop(0, '#8B0000'); // Mocno ciemno czerwony w środku
-        balloonGradient.addColorStop(0.3, '#B22222'); // Ciemno czerwony
-        balloonGradient.addColorStop(0.6, '#DC143C'); // Czerwony
-        balloonGradient.addColorStop(1, '#FF4444'); // Jaśniejszy czerwony na zewnątrz
-        
-        ctx.fillStyle = balloonGradient;
-        ctx.beginPath();
-        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Obramowanie balonu
-        ctx.strokeStyle = '#FF4444';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
-        ctx.stroke();
+        // W trybie kolizji balon pęka i znika
+        if (!isCrashMode || this.balloonSize > 0) {
+            const balloonGradient = ctx.createRadialGradient(0, balloonY, 0, 0, balloonY, balloonRadius);
+            balloonGradient.addColorStop(0, '#8B0000'); // Mocno ciemno czerwony w środku
+            balloonGradient.addColorStop(0.3, '#B22222'); // Ciemno czerwony
+            balloonGradient.addColorStop(0.6, '#DC143C'); // Czerwony
+            balloonGradient.addColorStop(1, '#FF4444'); // Jaśniejszy czerwony na zewnątrz
+            
+            ctx.fillStyle = balloonGradient;
+            ctx.beginPath();
+            ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Obramowanie balonu
+            ctx.strokeStyle = '#FF4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, balloonY, balloonRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+        }
         
         // Liny łączące balon z koszem (4 linie) - basketTopY już zdefiniowane w sekcji ramion
-        ctx.strokeStyle = '#666';
-        ctx.lineWidth = 2;
-        for (let i = -1; i <= 1; i += 2) {
-            ctx.beginPath();
-            ctx.moveTo(i * balloonRadius * 0.3, balloonY + balloonRadius);
-            ctx.lineTo(i * this.width * 0.3, basketTopY);
-            ctx.stroke();
+        // W trybie kolizji liny znikają wraz z balonem
+        if (!isCrashMode || this.balloonSize > 0.2) {
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            for (let i = -1; i <= 1; i += 2) {
+                ctx.beginPath();
+                ctx.moveTo(i * balloonRadius * 0.3, balloonY + balloonRadius);
+                ctx.lineTo(i * this.width * 0.3, basketTopY);
+                ctx.stroke();
+            }
         }
         
         // Dłonie (okrągłe, w kolorze skóry) na linach - rysowane PO linach, żeby były na wierzchu
@@ -848,9 +860,12 @@ class Game {
             return; // Nie aktualizuj reszty gry podczas animacji
         }
         
-        if (gameState !== 'playing') return;
-        
         this.frameCount++;
+        
+        // Aktualizuj turbiny (animacja łopat) - zawsze, nawet po zakończeniu gry
+        this.turbines.forEach(turbine => turbine.update());
+        
+        if (gameState !== 'playing') return;
         
         // Oblicz prędkość poziomą na podstawie siły wiatru
         let windForce = 0;
@@ -886,14 +901,67 @@ class Game {
         
         // Aktualizuj gracza (tylko ruch w górę/dół)
         const hitGround = this.player.update();
-        if (hitGround) {
-            this.gameOver();
-            return;
+        if (hitGround && !isCrashing) {
+            // Rozpocznij animację kolizji
+            isCrashing = true;
+            crashAnimationProgress = 0;
+            
+            // Utwórz cząsteczki śniegu przy zderzeniu
+            const groundY = canvas.height - groundHeight;
+            const crashX = this.player.x;
+            const crashY = groundY;
+            
+            // Utwórz wiele cząsteczek śniegu
+            for (let i = 0; i < 30; i++) {
+                crashParticles.push({
+                    x: crashX + (Math.random() - 0.5) * 40, // Rozrzut w poziomie
+                    y: crashY,
+                    vx: (Math.random() - 0.5) * 4, // Prędkość pozioma
+                    vy: -Math.random() * 6 - 2, // Prędkość pionowa (w górę)
+                    size: Math.random() * 4 + 2, // Rozmiar cząsteczki
+                    life: 1.0, // Życie cząsteczki (1.0 = pełne, 0 = martwa)
+                    decay: Math.random() * 0.02 + 0.015 // Szybkość zanikania
+                });
+            }
         }
         
-        // Aktualizuj turbiny (tylko animacja łopat)
-        this.turbines.forEach(turbine => turbine.update());
-        this.turbines = this.turbines.filter(turbine => !turbine.isOffScreen());
+        // Aktualizuj animację kolizji
+        if (isCrashing) {
+            crashAnimationProgress += 1 / crashAnimationDuration;
+            // Zatrzymaj gracza podczas animacji
+            horizontalSpeed = 0;
+            
+            // Ustaw postać na ziemi (nie porusza się)
+            const groundY = canvas.height - groundHeight;
+            this.player.y = groundY - this.player.height / 2;
+            
+            // Aktualizuj cząsteczki śniegu
+            crashParticles = crashParticles.filter(particle => {
+                // Aktualizuj pozycję
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                
+                // Grawitacja dla cząsteczek
+                particle.vy += 0.15;
+                
+                // Zmniejsz życie cząsteczki
+                particle.life -= particle.decay;
+                
+                // Usuń cząsteczkę jeśli jest martwa lub poza ekranem
+                return particle.life > 0 && particle.y < canvas.height + 50;
+            });
+            
+            if (crashAnimationProgress >= 1) {
+                // Zakończ animację i przejdź do Game Over
+                this.gameOver();
+                return;
+            }
+        }
+        
+        // Filtruj turbiny (usuń te poza ekranem) - tylko podczas gry
+        if (gameState === 'playing') {
+            this.turbines = this.turbines.filter(turbine => !turbine.isOffScreen());
+        }
         
         // Aktualizuj gwiazdki (miganie)
         this.stars.forEach(star => {
@@ -1265,7 +1333,54 @@ class Game {
                 this.player.draw(false, 0); // Bez wiatru podczas animacji
                 this.player.x = originalX; // Przywróć oryginalną pozycję
             } else if (gameState === 'playing') {
-                this.player.draw(isInWindStream, horizontalSpeed);
+                // Rysuj gracza z animacją kolizji jeśli trwa
+                if (isCrashing) {
+                    // Zapisz oryginalne wartości
+                    const originalRotation = this.player.rotation;
+                    const originalBalloonSize = this.player.balloonSize;
+                    
+                    // Bez rotacji - postać pozostaje pionowa
+                    this.player.rotation = 0;
+                    // Balon pęka - zmniejsza się, ale nie znika całkowicie (do 30% rozmiaru)
+                    this.player.balloonSize = Math.max(0.3, 1 - crashAnimationProgress * 0.7);
+                    
+                    // Zanikanie postaci (stopniowe)
+                    const fadeOpacity = 1 - crashAnimationProgress * 0.8; // Zanika do 20% przezroczystości
+                    
+                    ctx.save();
+                    ctx.globalAlpha = fadeOpacity;
+                    // Rysuj gracza (z zanikaniem)
+                    this.player.draw(false, 0, true); // true = tryb kolizji
+                    ctx.restore();
+                    
+                    // Rysuj cząsteczki śniegu
+                    crashParticles.forEach(particle => {
+                        ctx.save();
+                        ctx.globalAlpha = particle.life;
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    });
+                    
+                    // Przywróć oryginalne wartości
+                    this.player.rotation = originalRotation;
+                    this.player.balloonSize = originalBalloonSize;
+                    
+                    // Rysuj cząsteczki śniegu
+                    crashParticles.forEach(particle => {
+                        ctx.save();
+                        ctx.globalAlpha = particle.life;
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.beginPath();
+                        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    });
+                } else {
+                    this.player.draw(isInWindStream, horizontalSpeed);
+                }
                 // Rysuj pasek progresu (zamiast punktów)
                 this.drawProgressBar();
                 // Rysuj pasek timera
@@ -1606,18 +1721,13 @@ class Game {
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 10;
         
-        // Tytuł Game Over
+        // Tytuł Game Over (po niemiecku)
         ctx.fillStyle = '#E2001A';
         ctx.font = 'bold 42px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.shadowColor = 'transparent';
-        ctx.fillText('Game Over', menuX, menuY - 70);
-        
-        // Wynik
-        ctx.fillStyle = '#555';
-        ctx.font = '22px Arial';
-        ctx.fillText(`Dein Ergebnis: ${score}`, menuX, menuY - 20);
+        ctx.fillText('Spiel beendet', menuX, menuY - 40);
         
         // Przycisk Restart
         const buttonY = menuY + 50;
@@ -1739,6 +1849,10 @@ class Game {
         gameProgress = 0;
         horizontalSpeed = 0;
         scrollOffset = 0;
+        isCrashing = false; // Reset animacji kolizji
+        crashAnimationProgress = 0;
+        crashBounceVelocity = 0; // Reset prędkości odbicia
+        crashParticles = []; // Reset cząsteczek
         isJetpackActive = false; // Reset jetpacka
         windMomentum = 0; // Reset momentum
         introAnimationProgress = 0; // Reset animacji intro
