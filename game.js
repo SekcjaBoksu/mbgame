@@ -1297,67 +1297,69 @@ class Game {
         // Pasek timera - między paskiem odległości a paskiem prędkości
         const barX = canvas.width / 2;
         const barY = 100; // Między progress barem (40, wysokość 50) a speed barem (120)
-        const barWidth = 200;
-        const barHeight = 20;
+        const barWidth = 150; // Węższy pasek
+        const barHeight = 35; // Wyższy dla lepszej czytelności
         
-        // Tło paska
+        // Tło paska - białe, nieprzezroczyste (jak pasek progresu)
         const bgGradient = ctx.createLinearGradient(
             barX - barWidth / 2,
             barY - barHeight / 2,
             barX + barWidth / 2,
             barY + barHeight / 2
         );
-        bgGradient.addColorStop(0, 'rgba(200, 200, 200, 0.3)');
-        bgGradient.addColorStop(1, 'rgba(150, 150, 150, 0.3)');
+        bgGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        bgGradient.addColorStop(1, 'rgba(240, 248, 255, 0.95)');
         
         ctx.fillStyle = bgGradient;
         ctx.beginPath();
-        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 10);
+        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 12);
         ctx.fill();
         
-        // Obramowanie
-        const timeColor = gameTime < 10 ? '#FF4444' : '#2C5F8D'; // Czerwony gdy mało czasu
-        ctx.strokeStyle = timeColor;
-        ctx.lineWidth = 2;
+        // Obramowanie - niebieskie (jak pasek progresu)
+        const borderColor = gameTime < 10 ? 'rgba(255, 68, 68, 0.8)' : 'rgba(74, 144, 226, 0.5)'; // Czerwony gdy mało czasu
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 10);
+        ctx.roundRect(barX - barWidth / 2, barY - barHeight / 2, barWidth, barHeight, 12);
         ctx.stroke();
         
-        // Ikona zegarka po lewej stronie
-        const iconX = barX - barWidth / 2 + 15;
+        // Ikona zegarka po lewej stronie - większa
+        const iconX = barX - barWidth / 2 + 20;
         const iconY = barY;
-        const iconSize = 10; // Zmniejszona, żeby się nie nakładała
+        const iconSize = 16; // Większa ikona
         
         ctx.save();
         ctx.translate(iconX, iconY);
-        ctx.strokeStyle = '#FFFFFF'; // Biały kolor dla ikony
-        ctx.fillStyle = '#FFFFFF';
-        ctx.lineWidth = 1.5; // Cieńsza linia
+        const iconColor = gameTime < 10 ? '#FF4444' : '#4A90E2'; // Czerwony gdy mało czasu, inaczej niebieski
+        ctx.strokeStyle = iconColor;
+        ctx.fillStyle = iconColor;
+        ctx.lineWidth = 2;
         
         // Okrąg zegarka
         ctx.beginPath();
         ctx.arc(0, 0, iconSize / 2, 0, Math.PI * 2);
         ctx.stroke();
         
-        // Wskazówki zegarka (12:00) - krótsze, żeby się nie nakładały
+        // Wskazówki zegarka (12:00)
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(0, -iconSize / 4); // Krótsza wskazówka (minutowa)
+        ctx.lineTo(0, -iconSize / 3); // Długa wskazówka (minutowa)
         ctx.stroke();
         
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        ctx.lineTo(iconSize / 5, 0); // Krótsza wskazówka (godzinowa)
+        ctx.lineTo(iconSize / 4, 0); // Krótka wskazówka (godzinowa)
         ctx.stroke();
         
         ctx.restore();
         
-        // Tekst z czasem
+        // Tekst z czasem - wyśrodkowany, większa czcionka
+        const timeColor = gameTime < 10 ? '#FF4444' : '#2C5F8D'; // Czerwony gdy mało czasu
         ctx.fillStyle = timeColor;
-        ctx.font = 'bold 14px Arial';
-        ctx.textAlign = 'left';
+        ctx.font = 'bold 24px Arial'; // Większa czcionka
+        ctx.textAlign = 'center'; // Wyśrodkowany
         ctx.textBaseline = 'middle';
-        ctx.fillText(`${Math.ceil(gameTime)}s`, iconX + iconSize + 8, barY);
+        ctx.fillText(`${Math.ceil(gameTime)}s`, barX, barY);
     }
     
     drawSpeedBar() {
