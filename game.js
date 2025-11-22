@@ -850,6 +850,11 @@ class Game {
     }
     
     update() {
+        this.frameCount++;
+        
+        // Aktualizuj turbiny (animacja łopat) - zawsze, nawet podczas intro i po zakończeniu gry
+        this.turbines.forEach(turbine => turbine.update());
+        
         // Animacja intro - postać nadlatuje z lewej strony (tylko gdy animacja została rozpoczęta)
         if (gameState === 'start' && introAnimationProgress > 0) {
             introAnimationProgress += 1 / introAnimationDuration;
@@ -859,11 +864,6 @@ class Game {
             }
             return; // Nie aktualizuj reszty gry podczas animacji
         }
-        
-        this.frameCount++;
-        
-        // Aktualizuj turbiny (animacja łopat) - zawsze, nawet po zakończeniu gry
-        this.turbines.forEach(turbine => turbine.update());
         
         if (gameState !== 'playing') return;
         
@@ -1332,6 +1332,20 @@ class Game {
                 this.player.x = animatedX;
                 this.player.draw(false, 0); // Bez wiatru podczas animacji
                 this.player.x = originalX; // Przywróć oryginalną pozycję
+                
+                // Rysuj elementy HUD - z animacją wysuwania podczas intro
+                const hudProgress = Math.min(1, (introAnimationProgress - 0.3) / 0.4); // Wysuwają się w ostatnich 40% animacji
+                if (hudProgress > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = hudProgress;
+                    // Rysuj pasek progresu (zamiast punktów)
+                    this.drawProgressBar(hudProgress);
+                    // Rysuj pasek timera
+                    this.drawTimerBar(hudProgress);
+                    // Rysuj pasek prędkości
+                    this.drawSpeedBar(hudProgress);
+                    ctx.restore();
+                }
             } else if (gameState === 'playing') {
                 // Rysuj gracza z animacją kolizji jeśli trwa
                 if (isCrashing) {
@@ -1381,12 +1395,10 @@ class Game {
                 } else {
                     this.player.draw(isInWindStream, horizontalSpeed);
                 }
-                // Rysuj pasek progresu (zamiast punktów)
-                this.drawProgressBar();
-                // Rysuj pasek timera
-                this.drawTimerBar();
-                // Rysuj pasek prędkości
-                this.drawSpeedBar();
+                // Rysuj elementy HUD (pełna widoczność podczas gry)
+                this.drawProgressBar(1);
+                this.drawTimerBar(1);
+                this.drawSpeedBar(1);
             }
         }
         
@@ -1406,10 +1418,11 @@ class Game {
         }
     }
     
-    drawProgressBar() {
+    drawProgressBar(slideProgress = 1) {
         // Pasek progresu z postacią i metą
         const barX = canvas.width / 2;
-        const barY = 40;
+        // Animacja wysuwania - przesuwa się z góry
+        const barY = 40 - (1 - slideProgress) * 60; // Wysuwa się z góry
         const barWidth = canvas.width * 0.85; // 85% szerokości ekranu
         const barHeight = 50;
         
@@ -1493,10 +1506,11 @@ class Game {
         ctx.restore();
     }
     
-    drawTimerBar() {
+    drawTimerBar(slideProgress = 1) {
         // Pasek timera - między paskiem odległości a paskiem prędkości
         const barX = canvas.width / 2;
-        const barY = 100; // Między progress barem (40, wysokość 50) a speed barem (120)
+        // Animacja wysuwania - przesuwa się z góry
+        const barY = 100 - (1 - slideProgress) * 60; // Wysuwa się z góry
         const barWidth = 150; // Węższy pasek
         const barHeight = 35; // Wyższy dla lepszej czytelności
         
@@ -1562,10 +1576,11 @@ class Game {
         ctx.fillText(`${Math.ceil(gameTime)}s`, barX, barY);
     }
     
-    drawSpeedBar() {
+    drawSpeedBar(slideProgress = 1) {
         // Pasek prędkości - na dole ekranu, pod punktami
         const barX = canvas.width / 2;
-        const barY = 130; // Pod timer barem (100, wysokość 20)
+        // Animacja wysuwania - przesuwa się z góry
+        const barY = 130 - (1 - slideProgress) * 60; // Wysuwa się z góry
         const barWidth = 200;
         const barHeight = 20;
         const maxSpeed = 4.0; // Maksymalna prędkość (boost może osiągnąć ~3.5)
