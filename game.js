@@ -64,10 +64,14 @@ let isCrashing = false; // Czy trwa animacja kolizji
 let crashBounceVelocity = 0; // Prędkość odbicia podczas kolizji
 let crashParticles = []; // Cząsteczki śniegu przy kolizji
 
+// Zmienne dla fajerwerków po zwycięstwie
+let fireworks = []; // Cząsteczki fajerwerków
+let fireworksTimer = 0; // Timer dla generowania fajerwerków
+
 // Nowe zmienne dla ścigania z czasem
 const MAX_TIME = 60; // Maksymalny czas w sekundach
 let gameTime = MAX_TIME; // Pozostały czas
-const FINISH_LINE_DISTANCE = 7000; // Odległość do mety w pikselach (wydłużona)
+const FINISH_LINE_DISTANCE = 7000; // Odległość do mety w pikselach
 let startTime = null; // Czas rozpoczęcia gry (w milisekundach)
 
 // Załaduj logo (małe - na postaci)
@@ -950,6 +954,45 @@ class Game {
             return; // Nie aktualizuj reszty gry podczas animacji
         }
         
+        // Aktualizuj fajerwerki po zwycięstwie (przed return, żeby działały)
+        if (gameState === 'victory') {
+            fireworksTimer++;
+            
+            // Generuj nowe fajerwerki co kilka klatek (częściej i więcej)
+            if (fireworksTimer % 10 === 0) {
+                const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#FF1493'];
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height * 0.5; // Górna połowa ekranu
+                
+                // Utwórz eksplozję fajerwerków (wiele cząsteczek)
+                for (let i = 0; i < 50; i++) {
+                    const angle = (Math.PI * 2 * i) / 50;
+                    const speed = 3 + Math.random() * 5;
+                    fireworks.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        size: 4 + Math.random() * 4,
+                        life: 1.0,
+                        decay: 0.01 + Math.random() * 0.008
+                    });
+                }
+            }
+            
+            // Aktualizuj istniejące fajerwerki
+            fireworks = fireworks.filter(firework => {
+                firework.x += firework.vx;
+                firework.y += firework.vy;
+                firework.vy += 0.1; // Grawitacja
+                firework.life -= firework.decay;
+                return firework.life > 0 && firework.y < canvas.height + 50;
+            });
+            
+            return; // Nie aktualizuj reszty gry po zwycięstwie
+        }
+        
         if (gameState !== 'playing') return;
         
         // Oblicz prędkość poziomą na podstawie siły wiatru
@@ -1390,8 +1433,42 @@ class Game {
         // Rysuj turbiny w tle
         this.turbines.forEach(turbine => turbine.draw());
         
-        // Rysuj gracza (na pierwszym planie) - podczas gry i animacji intro
-        if (gameState === 'playing' || (gameState === 'start' && introAnimationProgress > 0)) {
+        // Rysuj meta (beam/słup) - jeśli jest widoczna na ekranie
+        const finishLineScreenX = FINISH_LINE_DISTANCE - scrollOffset;
+        if (finishLineScreenX >= -50 && finishLineScreenX <= canvas.width + 50) {
+            const groundY = canvas.height - groundHeight;
+            const beamWidth = 12; // Szerokość belki
+            const beamHeight = groundY; // Wysokość belki (od ziemi do góry ekranu)
+            const beamY = 0; // Zaczyna się od góry ekranu
+            const beamX = finishLineScreenX - beamWidth / 2;
+            
+            // Główna belka (biała z gradientem)
+            const beamGradient = ctx.createLinearGradient(beamX, beamY, beamX + beamWidth, beamY);
+            beamGradient.addColorStop(0, '#FFFFFF');
+            beamGradient.addColorStop(0.5, '#FFD700'); // Złoty w środku
+            beamGradient.addColorStop(1, '#FFFFFF');
+            ctx.fillStyle = beamGradient;
+            ctx.fillRect(beamX, beamY, beamWidth, beamHeight);
+            
+            // Efekt świecenia (jasny blask)
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 20;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+            ctx.fillRect(beamX - 5, beamY, beamWidth + 10, beamHeight);
+            ctx.shadowBlur = 0;
+            
+            // Czerwono-białe pasy (jak na słupie mety)
+            const stripeHeight = 30;
+            for (let y = beamY; y < beamHeight; y += stripeHeight * 2) {
+                ctx.fillStyle = '#DC143C'; // Czerwony
+                ctx.fillRect(beamX, y, beamWidth, stripeHeight);
+            }
+        }
+        
+        // Rysuj gracza (na pierwszym planie) - podczas gry, animacji intro i po zwycięstwie
+        if (gameState === 'playing' || (gameState === 'start' && introAnimationProgress > 0) || gameState === 'victory') {
             // Sprawdź czy gracz jest w podmuchu wiatru (tylko podczas gry)
             const playerY = this.player.y;
             let isInWindStream = false;
@@ -1484,6 +1561,9 @@ class Game {
                 this.drawProgressBar(1);
                 this.drawTimerBar(1);
                 this.drawSpeedBar(1);
+            } else if (gameState === 'victory') {
+                // Rysuj gracza po zwycięstwie (bez wiatru, bez animacji)
+                this.player.draw(false, 0, false);
             }
         }
         
@@ -1492,7 +1572,26 @@ class Game {
             this.drawStartMenu();
         }
         
-        // Rysuj ekran Victory (sukces) - przed Game Over
+        // Rysuj fajerwerki po zwycięstwie (przed ekranem zwycięstwa, żeby były za boksem)
+        if (gameState === 'victory') {
+            fireworks.forEach(firework => {
+                ctx.save();
+                // Zwiększona widoczność fajerwerków
+                ctx.globalAlpha = firework.life * 0.9;
+                ctx.fillStyle = firework.color;
+                ctx.beginPath();
+                ctx.arc(firework.x, firework.y, firework.size, 0, Math.PI * 2);
+                ctx.fill();
+                // Dodaj efekt świecenia
+                ctx.shadowColor = firework.color;
+                ctx.shadowBlur = 10;
+                ctx.globalAlpha = firework.life * 0.5;
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+        
+        // Rysuj ekran Victory (sukces) - przed Game Over (na wierzchu fajerwerków)
         if (gameState === 'victory') {
             this.drawVictoryScreen();
         }
@@ -1862,15 +1961,15 @@ class Game {
     }
     
     drawVictoryScreen() {
-        // Półprzezroczyste tło
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        // Półprzezroczyste tło (zmniejszona przezroczystość, żeby fajerwerki były bardziej widoczne)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         // Tło menu
         const menuX = canvas.width / 2;
         const menuY = canvas.height / 2;
         const menuWidth = Math.min(350, canvas.width * 0.8);
-        const menuHeight = 280;
+        const menuHeight = 320; // Zwiększona wysokość, żeby pomieścić przycisk z większym odstępem
         
         ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
         ctx.beginPath();
@@ -1891,14 +1990,15 @@ class Game {
         ctx.shadowColor = 'transparent';
         ctx.fillText('Erfolg!', menuX, menuY - 70);
         
-        // Czas ukończenia
-        const finishTime = MAX_TIME - gameTime;
+        // Gratulacje
         ctx.fillStyle = '#555';
-        ctx.font = '22px Arial';
-        ctx.fillText(`Zeit: ${finishTime.toFixed(1)}s`, menuX, menuY - 20);
+        ctx.font = '20px Arial';
+        ctx.fillText('Mit Hilfe des Windes', menuX, menuY - 20);
+        ctx.fillText('hast du das Ziel', menuX, menuY + 5);
+        ctx.fillText('vor Ablauf der Zeit erreicht!', menuX, menuY + 30);
         
-        // Przycisk Restart
-        const buttonY = menuY + 50;
+        // Przycisk Restart (zwiększony odstęp od tekstu)
+        const buttonY = menuY + 80;
         const buttonWidth = 200;
         const buttonHeight = 50;
         
@@ -1938,6 +2038,9 @@ class Game {
     victory() {
         gameState = 'victory';
         isJetpackActive = false; // Wyłącz jetpack
+        // Inicjalizuj fajerwerki
+        fireworks = [];
+        fireworksTimer = 0;
         // Czas ukończenia jest wyświetlany na canvasie w drawVictoryScreen()
     }
     
@@ -1958,6 +2061,8 @@ class Game {
         introAnimationProgress = 0; // Reset animacji intro
         gameTime = MAX_TIME; // Reset timera
         startTime = null; // Reset czasu rozpoczęcia
+        fireworks = []; // Reset fajerwerków
+        fireworksTimer = 0;
         // Punkty są renderowane na canvasie, nie w HTML
         
         // Reset gwiazdek

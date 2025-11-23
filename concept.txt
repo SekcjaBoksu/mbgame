@@ -35,10 +35,17 @@ GŁÓWNA MECHANIKA - NOWA KONCEPCJA:
    - Pasek progresu pokazuje jak daleko jesteśmy od mety
    - Postać na pasku przesuwa się w prawo w miarę postępu
 
-5. ELEMENTY DO DODANIA (PÓŹNIEJ):
-   - Konkretny cel wizualny (meta na ekranie)
-   - Animacja kończąca grę (sukces)
-   - Ekran sukcesu z czasem ukończenia
+5. ANIMACJA LĄDOWANIA PO ZWYCIĘSTWIE:
+   - Po przekroczeniu mety:
+     * Postać pozostaje w tej samej pozycji X (nie przesuwa się w lewo/prawo)
+     * Ekran scrolluje się dalej z bazową prędkością (0.7)
+     * Scrollowanie trwa aż wszystkie wiatraki i ich smugi znikną z ekranu
+     * Postać pozostaje na wysokości, na jakiej dotarła do mety
+   - Po zniknięciu wszystkich wiatraków:
+     * Postać delikatnie ląduje (spada z obecnej wysokości do ziemi)
+     * Postać ląduje w miejscu gdzie była przez całą grę (canvas.width * 0.15)
+     * Efekt cząsteczek śniegu przy lądowaniu
+   - Po lądowaniu wyświetla się ekran zwycięstwa
 
 TECHNICZNE SZCZEGÓŁY:
 ---------------------
